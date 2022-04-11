@@ -1,0 +1,11 @@
+Copyright (C) 2019 - All Rights Reserved
+
+All information contained herein is, and remains under exclusive 
+license to The University of California San Diego and its suppliers,
+if any.  The intellectual and technical concepts contained
+herein are proprietary to The University of California San Diego
+and its suppliers and may be covered by U.S. and Foreign Patents,
+patents in process, and are protected by trade secret or copyright law.
+Dissemination of this information or reproduction of this material
+is strictly forbidden unless prior written permission is obtained
+from The University of California San Diego.
