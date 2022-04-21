@@ -435,6 +435,7 @@ class DesignGeometry:
         '''Least square fit b-spline surface'''
         # for pointer_id in self.evaluated_pointsets.parent_pointers:
         for pointset in pointset_list:
+            #print(pointset.pointset_id,pointset.name)
             component_shape = pointset.shape
             #print(pointset.pointset_id,pointset.name)#9 primary_spar
             if output_vec is None:
@@ -488,8 +489,10 @@ class DesignGeometry:
 
                 a = np.matmul(basis0.toarray().T, basis0.toarray())
                 if np.linalg.det(a) == 0:
+                    print('lstsq')
                     cps_fitted,_,_,_ = np.linalg.lstsq(a, np.matmul(basis0.toarray().T, entity_points_be_fitted), rcond=None)
                 else: 
+                    print('linalg')
                     cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, entity_points_be_fitted))            
             
                 bspline_entity_surface = BSplineSurface(
@@ -600,7 +603,6 @@ class DesignGeometry:
         # return self.fit_bspline_entities(pts)
         return
 
-
     def read_file(self, file_name):
         if file_name != None:
             if ((file_name[-4:].lower() == '.stp') or (file_name[-5:].lower() == '.step')):
@@ -656,5 +658,186 @@ class DesignGeometry:
     def add_geometric_outputs(self, geo_outputs):
         self.geometric_outputs = geo_outputs
 
+    def fit_bspline_ctrl_pointsets(self, fitting_pointset_list, output_vec=None):
+        output_pointset_list = [] 
+        for pointset_fitted in fitting_pointset_list:
+            component_shape = pointset_fitted.shape
+            #print(pointset.pointset_id,pointset.name)#9 primary_spar
+            if output_vec is None:
+                entity_points_be_fitted = pointset_fitted.physical_coordinates
+            else:
+                start_index = pointset_fitted.output_starting_ind
+                end_index = start_index + np.cumprod(component_shape)[-2]
+                entity_points_be_fitted = output_vec[start_index:end_index]
+            if len(component_shape[:-1]) == 0:  # is point  
+                print('fitting points has not been implemented yet')
+                pass        #is point
+            elif len(component_shape[:-1]) == 1:  # is curve
+                print('fitting curves has not been implemented yet')
+                pass  
+            elif len(component_shape[:-1]) == 2:  # is surface
+                order_u_fitted = 4
+                order_v_fitted = 4
+                num_control_points_u_fitted = component_shape[0] - 1
+                num_control_points_v_fitted = component_shape[1] - 1
+                num_points_u_fitted = component_shape[0]
+                num_points_v_fitted = component_shape[1]
+
+                nnz = num_points_u_fitted * num_points_v_fitted * order_u_fitted * order_v_fitted
+                data = np.zeros(nnz)
+                row_indices = np.zeros(nnz, np.int32)
+                col_indices = np.zeros(nnz, np.int32)
+                u_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u_fitted), np.ones(num_points_v_fitted)).flatten()
+                v_vec = np.einsum('i,j->ij', np.ones(num_points_u_fitted), np.linspace(0., 1., num_points_v_fitted)).flatten()
+                knot_vector_u = np.zeros(num_control_points_u_fitted+order_u_fitted)
+                knot_vector_v = np.zeros(num_control_points_v_fitted+order_v_fitted)
+                get_open_uniform(order_u_fitted, num_control_points_u_fitted, knot_vector_u)
+                get_open_uniform(order_v_fitted, num_control_points_v_fitted, knot_vector_v)
+                get_basis_surface_matrix(
+                    order_u_fitted, num_control_points_u_fitted, 0, u_vec, knot_vector_u,
+                    order_v_fitted, num_control_points_v_fitted, 0, v_vec, knot_vector_v,
+                    num_points_u_fitted * num_points_v_fitted, data, row_indices, col_indices,
+                )
+                basis0 = sps.csc_matrix(
+                    (data, (row_indices, col_indices)), 
+                    shape=(num_points_u_fitted * num_points_v_fitted, num_control_points_u_fitted * num_control_points_v_fitted),
+                )
+
+                a = np.matmul(basis0.toarray().T, basis0.toarray())
+                if np.linalg.det(a) == 0:
+                    print('lstsq')
+                    cps_fitted,_,_,_ = np.linalg.lstsq(a, np.matmul(basis0.toarray().T, entity_points_be_fitted), rcond=None)
+                    print('TODO: lstsq')
+                else: 
+                    cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, entity_points_be_fitted))  
+                    relative_map = np.matmul(np.linalg.inv(a),basis0.toarray().T)
+
+                relative_map = sps.csc_matrix(relative_map)
+                pointset = PointSet(
+                    pointset_id = self.current_id,
+                    shape = np.append(num_control_points_u_fitted * num_control_points_v_fitted,3),
+                    output_starting_ind = self.current_pointset_pts,
+                    parent_pointers = [pointset_fitted.pointset_id],
+                    absolute_map = None,
+                    relative_map = relative_map,
+                    offset = np.array([0., 0., 0.]),            
+                    offset_absolute_map = None,
+                    physical_coordinates = None,
+                    permutation_matrix = None,
+                    name = 'ctrl_pts_' + pointset_fitted.name
+                    )
+  
+                self.pointsets_dict[self.current_id] = pointset
+                self.current_id += 1
+                self.current_pointset_pts += np.cumprod(pointset.shape)[-2]  
+                output_pointset_list.append(pointset)   
+
+                # self.assemble(pointset = pointset)
+                # points = self.evaluate(pointset = pointset)
+                # #points = relative_map.dot(entity_points_be_fitted)
+                # vp_points0 = vedo.Points(points, r=10, c='red',alpha=0.8)
+                # vp_points1 = vedo.Points(cps_fitted, r=15, c='green',alpha=0.3)
+                # vp_test = Plotter(axes=1)
+                # vp_test.show(vp_points0,vp_points1, 'Test', viewup="z", interactive=True)
+
+            else:  # is volume
+                print('fitting BSplineVolume has not been implemented yet')
+                pass 
+        return output_pointset_list
+    
+    def mapping_from_OML(self): 
+        relative_map = np.identity(len(self.total_cntrl_pts_vector))
+        relative_map = sps.csc_matrix(relative_map)
+        pointset = PointSet(
+            pointset_id = self.current_id,
+            shape = np.append(len(self.total_cntrl_pts_vector),3),
+            output_starting_ind = self.current_pointset_pts,
+            parent_pointers = [],
+            absolute_map = None,
+            relative_map = relative_map,
+            offset = np.array([0., 0., 0.]),            
+            offset_absolute_map = None,
+            physical_coordinates = None,
+            permutation_matrix = None,
+            name = 'OML'
+            )
+        self.pointsets_dict[self.current_id] = pointset
+        self.current_id += 1
+        self.current_pointset_pts += np.cumprod(pointset.shape)[-2]
+        
+        self.assemble(pointset = pointset)
+        points = self.evaluate(pointset = pointset)
+        color = list(colors.colors.values())[self.current_id]
+        vp_points = vedo.Points(points, r=5, c=color,alpha=0.3)
+        vp_test = Plotter(axes=1)
+        vp_test.show(vp_points, 'Test', viewup="z", interactive=True)
+        pass
+    
+    def extract_pointset_list_from_OML(self): 
+        pointset_list = [] 
+        for bspline_surface in self.input_bspline_entity_dict.values():
+            pointset = self.extract_pointset_from_OML(bspline_surface)
+            pointset_list.append(pointset)
+        return pointset_list
+    
+    def extract_pointset_from_OML(self, bspline_surface, num_points_u = 30, num_points_v = 18): 
+        order_u = bspline_surface.order_u
+        order_v = bspline_surface.order_v
+        num_control_points_u = bspline_surface.shape[0]
+        num_control_points_v = bspline_surface.shape[1]
+        num_points = num_points_u * num_points_v
+        nnz = num_points * order_u * order_v
+        data = np.zeros(nnz)
+        row_indices = np.zeros(nnz, np.int32)
+        col_indices = np.zeros(nnz, np.int32)
+        knot_vector_u = bspline_surface.knots_u
+        knot_vector_v = bspline_surface.knots_v
+        u_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u), np.ones(num_points_v)).flatten()
+        v_vec = np.einsum('i,j->ij', np.ones(num_points_u), np.linspace(0., 1., num_points_v)).flatten()
+
+        get_basis_surface_matrix(
+            order_u, num_control_points_u, 0, u_vec, knot_vector_u,
+            order_v, num_control_points_v, 0, v_vec, knot_vector_v,
+            num_points, data, row_indices, col_indices,
+        )
+        basis0 = sps.csc_matrix(
+            (data, (row_indices, col_indices)),
+            shape=(num_points, num_control_points_u * num_control_points_v),
+        )
+        #pts = basis0.dot(bspline_entity.control_points) 
+
+        relative_map = np.zeros((num_points,len(self.total_cntrl_pts_vector)))
+        linear_map = basis0.dot(np.identity(num_control_points_u * num_control_points_v))
+        j = 0
+        for surf in self.input_bspline_entity_dict.values():
+            if surf == bspline_surface:
+                relative_map[:, j:j+surf.shape[0]*surf.shape[1]] = linear_map
+            j = j + surf.shape[0]*surf.shape[1] 
+        relative_map = sps.csc_matrix(relative_map)
+        pointset = PointSet(
+            pointset_id = self.current_id,
+            shape = np.append(num_points,3),
+            output_starting_ind = self.current_pointset_pts,
+            parent_pointers = [],
+            absolute_map = None,
+            relative_map = relative_map,
+            offset = np.array([0., 0., 0.]),            
+            offset_absolute_map = None,
+            physical_coordinates = None,
+            permutation_matrix = None,
+            name = 'OML: ' + bspline_surface.name
+            )
+        self.pointsets_dict[self.current_id] = pointset
+        self.current_id += 1
+        self.current_pointset_pts += np.cumprod(pointset.shape)[-2]
+        
+        # self.assemble(pointset = pointset)
+        # points = self.evaluate(pointset = pointset)
+        # color = list(colors.colors.values())[self.current_id]
+        # vp_points = vedo.Points(points, r=5, c=color,alpha=0.3)
+        # vp_test = Plotter(axes=1)
+        # vp_test.show(vp_points, 'Test', viewup="z", interactive=False)
+
+        return pointset
 if __name__ == "__main__": 
     geo = DesignGeometry('CAD/eVTOL.stp')

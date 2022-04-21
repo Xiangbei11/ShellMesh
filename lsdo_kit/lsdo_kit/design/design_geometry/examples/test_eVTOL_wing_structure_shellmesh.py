@@ -148,12 +148,15 @@ time_end = time.time()
 runtime = time_end - time_start
 print('runtime', runtime)
 
-geo.fit_bspline_entities(structures_mesh.pointset_list)
+members_ctrl_pointsets = geo.fit_bspline_ctrl_pointsets(structures_mesh.pointset_list)
+for pointset in members_ctrl_pointsets:
+    print(pointset.pointset_id,pointset.name)
 
-
-path_name = 'CAD/'
-file_name = 'shellmesh_test_eVTOL_wing_structure.igs'
-geo.write_iges(path_name + file_name, plot = True)
+# geo.fit_bspline_entities(structures_mesh.pointset_list)
+# print(structures_mesh.pointset_list)
+# path_name = 'CAD/'
+# file_name = 'shellmesh_test_eVTOL_wing_structure_0.igs'
+# geo.write_iges(path_name + file_name, plot = True)
 
 '''plot'''
 cps = []
@@ -208,7 +211,7 @@ for surf in geo.output_bspline_entity_dict.values():
     if  surf.name == 'middle_spar':
         bspline_fitted_cps.append(Points(surf.control_points, r=12, c='blue').legend('Fitted bspline'))
 
-vp_test = Plotter(N=2, axes=1)
-vp_test.show(cps, surface_points, TFI, 'Surface + transfinite interpolated points', at=0, viewup="z")
-vp_test.show(cps, surface_points, bspline_fitted_cps, 'Surface + control points of fitted b-spline surface', at=1, viewup="z", interactive=False)
+# vp_test = Plotter(N=2, axes=1)
+# vp_test.show(cps, surface_points, TFI, 'Surface + transfinite interpolated points', at=0, viewup="z")
+# vp_test.show(cps, surface_points, bspline_fitted_cps, 'Surface + control points of fitted b-spline surface', at=1, viewup="z", interactive=True)
 

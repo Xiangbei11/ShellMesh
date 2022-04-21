@@ -272,8 +272,11 @@ def extract_pointset(geo, parent_pointset, point_indices, shape, offset=np.array
 
     shape = np.append(shape, 3)
     relative_map = np.zeros((len(vector_indices), parent_pointset.relative_map.shape[0]))
-    for index in vector_indices:
-        relative_map[index,index] = 1.
+    # for index in vector_indices:
+    #     relative_map[index,index] = 1.
+    for i in range(len(vector_indices)):
+        index = vector_indices[i]
+        relative_map[i,index] = 1.
     relative_map = sps.csc_matrix(relative_map)
     
     parent_pointset_list = [parent_pointset]
