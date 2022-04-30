@@ -57,7 +57,7 @@ for pointset in pointset_ctrl_list:
 #     print(pointset.pointset_id,pointset.name)
 intersection_list =[[77, 64, 'T'],\
                     [77, 67, 'T'],\
-                    [77, 69, 'T'],\
+                    #[77, 69, 'T'],\
                     # ['ctrl_pts_upper_wing', 'ctrl_pts_lower_wing', '-'],\
                         ] #'', '', '+' #'', '', '-'
 
