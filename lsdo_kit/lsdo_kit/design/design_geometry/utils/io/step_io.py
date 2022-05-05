@@ -23,18 +23,13 @@ def read_gmsh_stp(geo, file_name):
     with open(file_name, 'r') as f:
         b_spline_surf_info_initial = re.findall(r'B_SPLINE_SURFACE_WITH_KNOTS[\s\S]*?(?=;)', f.read())#"B_SPLINE_SURFACE_WITH_KNOTS(.*)"B_SPLINE_SURFACE_WITH_KNOTS[\s\S]*.\);
         num_surf = len(b_spline_surf_info_initial)
-        print('num_surf',num_surf)
         #print(b_spline_surf_info_initial[0])
         b_spline_surf_info = []
         for string in b_spline_surf_info_initial:
-            string = string.split()#'\n'
+            string = string.split()
             string = ''.join(string)
             string = string.replace(',#',', #')
             b_spline_surf_info.append(string)
-        #print(b_spline_surf_info[0])
-        #re.sub(r',#', r',1', b_spline_surf_info[0])
-        #print(re.findall(r',#', b_spline_surf_info[0]))
-        #print(re.sub(r"\n","",b_spline_surf_info_initial[0]))
 
         for i, surf in enumerate(b_spline_surf_info):
             # Get numbers following hashes in lines with B_SPLINE... These numbers should only be the line numbers of the cntrl_pts
@@ -224,7 +219,6 @@ def read_openvsp_stp(geo, file_name):
     with open(file_name, 'r') as f:
         b_spline_surf_info = re.findall(r"B_SPLINE_SURFACE_WITH_KNOTS.*\)", f.read())
         num_surf = len(b_spline_surf_info)
-        print('num_surf',num_surf)
         for i, surf in enumerate(b_spline_surf_info):
             #print(surf)
             # Get numbers following hashes in lines with B_SPLINE... These numbers should only be the line numbers of the cntrl_pts

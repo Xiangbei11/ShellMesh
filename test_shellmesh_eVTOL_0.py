@@ -9,6 +9,7 @@ cwd = os.getcwd()
 CAD_file_path = cwd + '/lsdo_kit/lsdo_kit/design/design_geometry/examples'
 os.chdir(CAD_file_path)
 from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh import *
+
 from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh import geo, structures_mesh, members_ctrl_pointset_list
 
 os.chdir(cwd)
@@ -21,36 +22,43 @@ shell_mesh = ShellMesh('shell_mesh', members_ctrl_pointset_list)
 bspline_surface_list = list(geo.input_bspline_entity_dict.values())
 OML_pointset_list = shell_mesh.extract_pointset_list_from_bspline_surface(geo, bspline_surface_list)
 
-
-
 for pointset in OML_pointset_list:
-    print(pointset.pointset_id,pointset.name, type(pointset).__name__)
+    print(pointset.pointset_id,pointset.name)
     if pointset.name == 'OML: Surface, 1':
-        geo.assemble(pointset = pointset)
-        points = geo.evaluate(pointset = pointset)
-        vd_points0 = vedo.Points(points, r=10, c='red',alpha=0.8)
         pointset_upper_wing0 = pointset
+      
     if pointset.name == 'OML: Surface, 3':
-        geo.assemble(pointset = pointset)
-        points = geo.evaluate(pointset = pointset)
-        vd_points1 = vedo.Points(points, r=15, c='green',alpha=0.5) 
         pointset_upper_wing1 = pointset
-    
+         
     if pointset.name == 'OML: Surface, 0':
         pointset_lower_wing0 = pointset
     if pointset.name == 'OML: Surface, 2':
         pointset_lower_wing1 = pointset
+    if pointset.name == 'OML: Surface, 4':
+        pointset_wing_tip0 = pointset
+        geo.assemble(pointset = pointset)
+        points = geo.evaluate(pointset = pointset)
+        vd_points0 = vedo.Points(points, r=10, c='red',alpha=0.8)          
+    if pointset.name == 'OML: Surface, 5':
+        pointset_wing_tip1 = pointset
+        geo.assemble(pointset = pointset)
+        points = geo.evaluate(pointset = pointset)
+        vd_points1 = vedo.Points(points, r=15, c='green',alpha=0.5) 
 
-merged_OML_list = [[pointset_upper_wing0, pointset_upper_wing1, 'upper_wing'],\
-                    [pointset_lower_wing0, pointset_lower_wing1, 'lower_wing'],\
+merged_OML_list = [[pointset_wing_tip0, pointset_wing_tip1, 'wing_tip'],
+                    [pointset_upper_wing0, pointset_upper_wing1, 'upper_wing'],
+                    [pointset_lower_wing0, pointset_lower_wing1, 'lower_wing'],                   
                     ] 
-pointset_ctrl_list  = shell_mesh.merge_OML(geo, merged_OML_list) 
+OML_ctrl_pointset_list  = shell_mesh.merge_OML(geo, merged_OML_list) 
 vd_points2 = []
-for pointset in pointset_ctrl_list:
+for pointset in OML_ctrl_pointset_list:
     print(pointset.pointset_id,pointset.name, pointset.shape)
     geo.assemble(pointset = pointset)
     points = geo.evaluate(pointset = pointset)
     vd_points2.append(vedo.Points(points, r=20, c='blue',alpha=0.3))
+vd_test = vedo.Plotter(axes=1)#, mesh
+vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) #vd_points0, vd_points1 #vd_points2, vd_points3, vd5, mesh
+exit()
 
 
 # for pointset in shell_mesh.pointest_dict.values():
@@ -69,9 +77,7 @@ print(len(points))
 length = len(B['triangles'].tolist())
 mesh = vedo.Mesh([points, np.array(B['triangles'].tolist()).reshape((length,3))])
 mesh.backColor().lineColor('green').lineWidth(3)
-vd_test = vedo.Plotter(axes=1)#, mesh
-vd_test.show(vd_points3, vd5, mesh, 'Test', viewup="z", interactive=True) #vd_points0, vd_points1 #vd_points2, 
-exit()
+
 
 
 

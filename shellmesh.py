@@ -22,10 +22,10 @@ class ShellMesh(Mesh):
         self.pointest_dict = {}
         for pointset in pointset_list:
             self.pointest_dict[pointset.name] = pointset
-        #self.mapping = np.array([])
         self.con_indices = 0
         self.connectivity = np.array([],dtype=np.int32)
         self.triangulation_dict = {}
+        #self.mapping = np.array([])
 
     def extract_pointset_list_from_bspline_surface(self, geo, bspline_surface_list): 
         pointset_list = [] 
@@ -39,8 +39,9 @@ class ShellMesh(Mesh):
         order_v = bspline_surface.order_v
         num_control_points_u = bspline_surface.shape[0]
         num_control_points_v = bspline_surface.shape[1]
-        num_points_u = bspline_surface.shape[0] + 1 
-        num_points_v = bspline_surface.shape[0] + 1 
+        num_points_u = bspline_surface.shape[0] + 1#3
+        num_points_v = bspline_surface.shape[0] + 1#3
+        #print(bspline_surface.name, num_points_u, num_points_v)        
         num_points = num_points_u * num_points_v
         nnz = num_points * order_u * order_v
         data = np.zeros(nnz)
@@ -96,8 +97,9 @@ class ShellMesh(Mesh):
             points0 = geo.evaluate(pointset = pointset0) 
             geo.assemble(pointset = pointset1)
             points1 = geo.evaluate(pointset = pointset1) 
-            # print('points0',points0.shape)
-            # print('points1',points1.shape)
+            # print('points0',points0)
+            # print('points1',points1)
+
             num_points0 = pointset0.shape[0]
             num_points1 = pointset1.shape[0]
             # print('num_points0', num_points0)
@@ -121,34 +123,35 @@ class ShellMesh(Mesh):
             geo.current_id += 1
             geo.current_pointset_pts += np.cumprod(output_pointset.shape)[-2]
 
-
             A = np.around(points0, decimals=8)
             B = np.around(points1, decimals=8)
             intersection_bool = (B[:, None] == A).all(-1).any(1)
-            intersection_points = points1[intersection_bool]
-            #print('intersection_points', intersection_points.shape)
-            points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
-            #print('points1_reduced_indices', points1_reduced_indices)
+            intersection_points = points1[intersection_bool]        
+            if len(intersection_points) != 0:               
+                #print('intersection_points', intersection_points.shape)
+                points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
+                #print('points1_reduced_indices', points1_reduced_indices)
 
-            point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points1)#
-            #print('point_indices', len(point_indices), point_indices)
-            #print('output_pointset',output_pointset.shape)
-            output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))#[1062    3]
-            #print('output_pointset',output_pointset.shape)
-
-            if len(point_indices)%len(intersection_points) ==0:
-                output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
-            else: 
-                print('Warning') 
-            geo.assemble(pointset = output_pointset)
-            geo.evaluate(pointset = output_pointset)
-            merged_ctrl_pointsets = geo.fit_bspline_ctrl_pointsets([output_pointset])
-            merged_ctrl_pointsets = merged_ctrl_pointsets[0]
-            merged_ctrl_pointsets.name = 'ctrl_pts_' + merged_list[2]  
-            
-            OML_ctrl_pointset_list.append(merged_ctrl_pointsets)
-            self.pointest_dict[merged_ctrl_pointsets.name] = merged_ctrl_pointsets
-
+                point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points1)#
+                #print('point_indices', len(point_indices), point_indices)
+                #print('output_pointset',output_pointset.shape)
+                output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))#[1062    3]
+                #print('output_pointset',output_pointset.shape)
+                if len(point_indices)%len(intersection_points) ==0:
+                    output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
+                else: 
+                    print('Warning') 
+                geo.assemble(pointset = output_pointset)
+                geo.evaluate(pointset = output_pointset)
+                merged_ctrl_pointsets = geo.fit_bspline_ctrl_pointsets([output_pointset])
+                merged_ctrl_pointsets = merged_ctrl_pointsets[0]
+                merged_ctrl_pointsets.name = 'ctrl_pts_' + merged_list[2]  
+                
+                OML_ctrl_pointset_list.append(merged_ctrl_pointsets)
+                self.pointest_dict[merged_ctrl_pointsets.name] = merged_ctrl_pointsets
+            else:
+                print('Warning1')
+                print(merged_list[2],len(intersection_bool), len(intersection_points))
             if plot:
                 vd_points0 = vedo.Points(points0, r=10, c='red',alpha=0.8)
                 vd_points1 = vedo.Points(points1, r=15, c='green',alpha=0.5) 

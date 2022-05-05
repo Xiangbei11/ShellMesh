@@ -137,7 +137,16 @@ def write_iges(geo, file_name, plot = False):
         f.write('13H920717.080000,23HMIL-PRF-28000B0,CLASS 1;                            G      4\n')
         Dcount = 1
         Pcount = 1
+        wing_surface_names = [
+        'Wing, 0, 12',
+        'Wing, 0, 13',
+        'Wing, 0, 14',
+        'Wing, 0, 15',
+        ]
         for surf in geo.output_bspline_entity_dict.values():
+            # if not (surf.name == 'Wing, 0, 16' or surf.name =='Wing, 0, 17' or surf.name in wing_surface_names):
+            #     continue
+            # print(surf.name)
             paraEntries = 13 + (len(surf.knots_u)) + (len(surf.knots_v)) + surf.shape[0] * surf.shape[1] + 3 * surf.shape[0] * surf.shape[1] + 1
             paraLines = (paraEntries - 10) // 3 + 2
             if np.mod(paraEntries - 10, 3) != 0:
@@ -151,6 +160,9 @@ def write_iges(geo, file_name, plot = False):
         Pcount  = 1
         counter = 1
         for surf in geo.output_bspline_entity_dict.values():
+            # if not (surf.name == 'Wing, 0, 16' or surf.name =='Wing, 0, 17' or surf.name in wing_surface_names):
+            #     continue
+            # print(surf.name)
             f.write(
                 "%10d,%10d,%10d,%10d,%10d,          %7dP%7d\n"
                 % (128, surf.shape[0] - 1, surf.shape[1] - 1, surf.order_u - 1, surf.order_v - 1, Pcount, counter)
@@ -189,7 +201,7 @@ def write_iges(geo, file_name, plot = False):
                 for i in range(surf.shape[0]):
                     for idim in range(3):
                         pos_counter += 1
-                        cntrl_pts = np.reshape(surf.control_points, (surf.shape[0], surf.shape[1],3))
+                        cntrl_pts = np.reshape(surf.control_points, (surf.shape[0], surf.shape[1],3)) #/1000 #scaling
                         f.write("%20.12g," % (np.real(cntrl_pts[i, j, idim])))
                         if np.mod(pos_counter, 3) == 0:
                             f.write("  %7dP%7d\n" % (Pcount, counter))

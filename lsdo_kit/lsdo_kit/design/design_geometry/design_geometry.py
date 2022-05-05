@@ -79,17 +79,24 @@ class DesignGeometry:
         self.mesh_list = {}
         self.bspline_mesh_list = {}
         self.geometric_outputs = None
+        print('num_surf',len(self.input_bspline_entity_dict.values()))
         if plot == True: #There are only 239 colors in vedo.colors.colors dictionary. If number of bspline surfaces is larger than 238*2, reduce the index of the color agian
             vps_ini = []
             vps = []
-            for i in range(len(self.input_bspline_entity_dict.values())):
+            for i in range(len(self.input_bspline_entity_dict.values())):        
                 if i > 238:
                     color = list(colors.colors.values())[i-239]#239
                 else:
                     color = list(colors.colors.values())[i]
                 surf_ini = list(self.initial_input_bspline_entity_dict.values())[i]
+                
+                # if not (surf_ini.name =='Wing, 0, 17' or surf_ini.name =='Wing, 0, 16'):
+                #     continue
+                # print(surf_ini.name)
+
                 vps_ini.append(Points(surf_ini.control_points, r=8, c = color))
                 surf = list(self.input_bspline_entity_dict.values())[i]
+                
                 vps.append(Points(surf.control_points, r=8, c = color))
             vp_init_out = Plotter()
             vp_init_out.show(vps_ini, 'Initial control points', axes=1, viewup="z", interactive = False)
@@ -493,7 +500,7 @@ class DesignGeometry:
                     print('lstsq')
                     cps_fitted,_,_,_ = np.linalg.lstsq(a, np.matmul(basis0.toarray().T, entity_points_be_fitted), rcond=None)
                 else: 
-                    print('linalg')
+                    #print('linalg')
                     cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, entity_points_be_fitted))            
             
                 bspline_entity_surface = BSplineSurface(

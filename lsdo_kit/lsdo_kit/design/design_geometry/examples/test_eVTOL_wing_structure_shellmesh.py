@@ -7,6 +7,7 @@ from lsdo_kit.old_files.mesh import Mesh
 import matplotlib.pyplot as plt
 import time
 
+import vedo
 from vedo import Points, Plotter, LegendBox
 
 from lsdo_kit.cython.basis_matrix_surface_py import get_basis_surface_matrix
@@ -16,10 +17,15 @@ time_start = time.time()
 
 ''' Spars and ribs creation script '''
 path_name = 'CAD/'
-file_name = 'eVTOL_wing_structure.stp' #file_name = 'eVTOL.stp'
+file_name = 'eVTOL_wing_structure_with_tip.stp' #file_name = 'eVTOL.stp'#_wing_structure_with_tip
 geo = DesignGeometry(path_name + file_name)
-structures_mesh = Mesh(name='structures_mesh')
 
+# path_name = 'CAD/'
+# file_name = 'eVTOL_wing_structure_with_tip.igs'
+# geo.write_iges(path_name + file_name, plot = True)
+# exit()
+
+structures_mesh = Mesh(name='structures_mesh')
 wing_surface_names = [
     'Surface, 0',
     'Surface, 1',
@@ -134,7 +140,7 @@ members_ctrl_pointset_list = geo.fit_bspline_ctrl_pointsets(structures_mesh.poin
 # geo.fit_bspline_entities(structures_mesh.pointset_list)
 # print(structures_mesh.pointset_list)
 # path_name = 'CAD/'
-# file_name = 'shellmesh_test_eVTOL_wing_structure_0.igs'
+# file_name = 'shellmesh_test_eVTOL_wing_structure_1.igs'
 # geo.write_iges(path_name + file_name, plot = True)
 
 
