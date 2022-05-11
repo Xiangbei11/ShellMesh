@@ -88,15 +88,12 @@ class DesignGeometry:
                     color = list(colors.colors.values())[i-239]#239
                 else:
                     color = list(colors.colors.values())[i]
-                surf_ini = list(self.initial_input_bspline_entity_dict.values())[i]
-                
-                # if not (surf_ini.name =='Wing, 0, 17' or surf_ini.name =='Wing, 0, 16'):
+                surf_ini = list(self.initial_input_bspline_entity_dict.values())[i] 
+                # if not (surf_ini.name =='Wing, 0, 8'):
                 #     continue
                 # print(surf_ini.name)
-
                 vps_ini.append(Points(surf_ini.control_points, r=8, c = color))
                 surf = list(self.input_bspline_entity_dict.values())[i]
-                
                 vps.append(Points(surf.control_points, r=8, c = color))
             vp_init_out = Plotter()
             vp_init_out.show(vps_ini, 'Initial control points', axes=1, viewup="z", interactive = False)
