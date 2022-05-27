@@ -1,3 +1,4 @@
+from typing import Set
 import numpy as np
 import scipy.sparse as sps
 
@@ -25,9 +26,9 @@ class ShellMesh(Mesh):
         self.constrained_node_indices = []
         self.num_of_nodes = 0
         self.connected_pointset_list = []
-        self.connectivity_dict = {}
         self.members_dict = {}
         self.tri_connectivity = np.empty((0,3), dtype=np.int32) 
+        self.num_of_members = 0
         # self.connectivity = np.array([],dtype=np.int32)
         # self.triangulation_dict = {}
         #self.mapping = np.array([])
@@ -161,259 +162,240 @@ class ShellMesh(Mesh):
     def identify_intersection_list(self, geo, intersection_list, plot = False):
         ''' Assume that all intersections between structural features are between 
         an edge of one feature and a surface of another feature, 
-        rather than a general surface-surface intersection.(All T intersections, rather than '+' intersections)'''
-        
-        pointset_ini = geo.pointsets_dict[intersection_list[0][0]]
-        geo.assemble(pointset = pointset_ini)
-        _ = geo.evaluate(pointset = pointset_ini)
+        rather than a general surface-surface intersection.(All T intersections, rather than '+' intersections)'''        
+        self.pointset_ini_check = 0
+        self.ini_starting_ind = self.num_of_nodes
+
         num_points_u0, num_points_v0  = intersection_list[0][2], intersection_list[0][3]       
         u0_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u0), np.ones(num_points_v0)).flatten()
         v0_vec = np.einsum('i,j->ij', np.ones(num_points_u0), np.linspace(0., 1., num_points_v0)).flatten()            
         u0_v0_vec = np.vstack((u0_vec, v0_vec)).T
-
-        constrained_edges = np.empty((0,2),dtype = int)
-        # constrained_points = np.empty((0,3)) 
-
-        self.pointset_ini_check = 0
+          
+        pointset_ini = geo.pointsets_dict[intersection_list[0][0]] 
         if pointset_ini not in self.connected_pointset_list:
-            self.connected_pointset_list.append(pointset_ini)
-            self.num_of_nodes_ini = self.num_of_nodes
-            self.num_of_nodes += len(u0_v0_vec)
-            self.members_dict[pointset_ini.name] = Member(    
-                name = pointset_ini.name,
-                node_indices = [*range(self.num_of_nodes_ini, self.num_of_nodes)],
-                )     
-            
-            _, basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec, num_points_u = num_points_u0, num_points_v = num_points_v0)
-            self.mapping = sps.vstack([self.mapping, basis0.dot(pointset_ini.absolute_map)])
-            self.mapping = sps.csc_matrix(self.mapping)
+            geo.assemble(pointset = pointset_ini)
+            _ = geo.evaluate(pointset = pointset_ini)   
             self.pointset_ini_check = 1
-        else:
-            self.num_of_nodes_ini =  self.members_dict[pointset_ini.name].options['node_indices'][0]
+            self.connected_pointset_list.append(pointset_ini)
+            self.num_of_members += 1
+            self.num_of_nodes += len(u0_v0_vec)    
+            basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec)
 
+            constrained_edges = np.empty((0,2),dtype = int)
+            indices_u0 = num_points_v0 * np.arange(num_points_u0)  
+            indices_v0 = np.arange(num_points_v0)
+            indices_u1 = num_points_v0 * np.arange(num_points_u0)+num_points_v0-1
+            indices_v1 = np.arange(num_points_v0)+ (num_points_u0*num_points_v0) - num_points_v0
+            for i in range(num_points_u0):
+                if i != num_points_u0 - 1:
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_u0[i], indices_u0[i+1]]]).reshape(1,2), axis = 0) 
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_u1[i], indices_u1[i+1]]]).reshape(1,2), axis = 0)
+            for i in range(num_points_v0):
+                if i != num_points_v0 - 1:
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_v0[i], indices_v0[i+1]]]).reshape(1,2), axis = 0) 
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_v1[i], indices_v1[i+1]]]).reshape(1,2), axis = 0)
+
+            self.members_dict[pointset_ini.name] = Member(    
+                #name = pointset_ini.name[9:],
+                id = self.num_of_members - 1,
+                node_indices = [*range(self.ini_starting_ind, self.num_of_nodes)],
+                constrained_node_indices = [],
+                u_v_vec = np.copy(u0_v0_vec),
+                constrained_edges = constrained_edges,
+                mapping = sps.csc_matrix(basis0.dot(pointset_ini.absolute_map))
+                )                             
+        else:
+            if not np.array_equal(self.members_dict[pointset_ini.name].options['u_v_vec'], u0_v0_vec):
+                print('Warning5')
+ 
         for intersection in intersection_list:
             pointset0 = geo.pointsets_dict[intersection[0]]
             if pointset0 != pointset_ini:
                 print('Warning2')         
             pointset1 = geo.pointsets_dict[intersection[1]]
-            num_points_u1, num_points_v1 = intersection[4], intersection[5] 
-            geo.assemble(pointset = pointset1)
-            _ = geo.evaluate(pointset = pointset1)  
-            if self.pointset_ini_check:  
-                u0_v0_vec, edge, constrained_node_indices = self.identify_intersection(geo, u0_v0_vec, pointset0, pointset1, num_points_u1,num_points_v1, edge_location = intersection[6], relationship = intersection[7])
-            
-            #if 'spar' in pointset1.name:
-                constrained_edges = np.append(constrained_edges, edge, axis = 0)
-
-                self.constrained_node_indices += constrained_node_indices
-            else:
-                u0_v0_vec = self.identify_intersection(geo, u0_v0_vec, pointset0, pointset1, num_points_u1,num_points_v1, edge_location = intersection[6], relationship = intersection[7])
-            # constrained_points = np.append(constrained_points, points, axis = 0)
-            # print('edge',edge.shape)
-            # print('constrained_points', constrained_points.shape)
+            if pointset1 not in self.connected_pointset_list:
+                geo.assemble(pointset = pointset1)
+                _ = geo.evaluate(pointset = pointset1) 
+            self.identify_intersection(
+                self.members_dict[pointset0.name].options['u_v_vec'],
+                pointset0, pointset1, 
+                num_points_u0 = intersection[2], num_points_v0 = intersection[3], 
+                num_points_u1 = intersection[4], num_points_v1 = intersection[5], 
+                edge_location = intersection[6], relationship = intersection[7]
+                )
         
+
         if self.pointset_ini_check:
-            _, basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec, num_points_u = num_points_u0, num_points_v = num_points_v0)
-            self.mapping[self.num_of_nodes_ini:self.num_of_nodes_ini+len(u0_v0_vec),:] = sps.csc_matrix(basis0.dot(pointset_ini.absolute_map))
-            
-            #constrained_edges = np.delete(constrained_edges, indices, 0) constrained_edges[:-1,:]
-
-            A = dict(vertices=u0_v0_vec, segments=constrained_edges)#
-            B = tr.triangulate(A,'pc')#,'c'
-
-            # tr.compare(plt, A, B)
-            # plt.show(block = False)
-            # print('len(constrained_edges)',len(constrained_edges))
-            # print('len(B[vertices])', len(B['vertices']))
-            # print('len(u0_v0_vec)',len(u0_v0_vec))
-            # if len(u0_v0_vec) != len(B['vertices']):
-            #     print('Warning4', len(u0_v0_vec), len(B['vertices']))
-            #     check_conn = B['triangles']
-            #     indices = []
-            #     for i in range(len(check_conn)):
-            #         if check_conn[i,0]>=2800 or check_conn[i,1]>=2800 or check_conn[i,2]>=2800:
-            #             print(check_conn[i,:])
-            #             indices.append(i)
-            #     check_conn = np.delete(check_conn, indices, 0)
-            #     B['triangles'] = check_conn          
-
-            B['triangles'] += self.num_of_nodes_ini
-            self.connectivity_dict[pointset_ini.name] = B['triangles']
-
-            self.members_dict[pointset_ini.name].options['tri_connectivity'] = B['triangles']
-            self.members_dict[pointset_ini.name].options['constrained_node_indices'] =  [x + self.num_of_nodes_ini for x in constrained_node_indices]
-            self.constrained_node_indices += self.members_dict[pointset_ini.name].options['constrained_node_indices']
-        else:
-            print('Sorry')                                                            
-
+            basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = self.members_dict[pointset_ini.name].options['u_v_vec'])            
+            self.members_dict[pointset_ini.name].options['mapping'] = sps.csc_matrix(basis0.dot(pointset_ini.absolute_map))
+        else:   
+            pass                                          
+        
+        A = dict(vertices=self.members_dict[pointset0.name].options['u_v_vec'], segments=self.members_dict[pointset_ini.name].options['constrained_edges'])#
+        B = tr.triangulate(A,'p')  
+        self.members_dict[pointset_ini.name].options['tri_connectivity'] = B['triangles']
         if plot:
-            test_points = self.mapping.dot(self.total_cntrl_pts_vector)
-            print('test_points', test_points.shape)
-            #tr.compare(plt, A, B)
-            #print(B['segments'])
-            #plt.show(block = False)           
-            #vd_points0 = vedo.Points(points, r=10, c='black',alpha=1.0)
-            #vd_points1 = vedo.Points(constrained_points, r=15, c='red',alpha=0.5)
-
-            #,rib_557,rib_556, rib_517, rib_477,
-            # rib_557 = vedo.Points(test_points[557,:].reshape((1,3)), c = 'grey', r=30)
-            # rib_556 = vedo.Points(test_points[556,:].reshape((1,3)), c = 'black', r=30)
-            # rib_517 = vedo.Points(test_points[517,:].reshape((1,3)), c = 'blue', r=30)
-            # rib_477 = vedo.Points(test_points[477,:].reshape((1,3)), c = 'green', r=30)
-            # print(constrained_node_indices)
-            # print(edge)
-            vd_points1 = vedo.Points(test_points[self.constrained_node_indices,:], r=15, c='red',alpha=0.5)
-            i = 0
-            for conn in self.connectivity_dict.values():
-                self.tri_connectivity = np.append(self.tri_connectivity, conn, axis = 0) 
-                i+=1
-            temp0 = []
-            temp1 = []
-            for i in range(12):
-                temp0_p = test_points[3016+45*i:3016+3+45*i,:]
-                temp0.append(vedo.Points(temp0_p, c = 'red', r=15))
-                for j in range(3):
-                    dist = np.linalg.norm(test_points[2680:2680+168,:] - temp0_p[j,:], axis = 1)
-                    index = np.argmin(dist)
-                    test_points[2680+index,:] = temp0_p[j,:]           
-                if i == 0:
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    test_points[2848+12:2848+15] = temp1_p
-                elif i==1:
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    test_points[2848+24:2848+27] = temp1_p
-                elif i==2 or i ==3:
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                elif i == 4:
-                    temp2_p = test_points[self.constrained_node_indices[186],:].reshape((1,3))
-                    test_points[3061-1+45*i:3061+45*i,0] = temp2_p[0,0]-0.3
-                    test_points[3061-2+45*i:3061+45*i-1,0] = temp2_p[0,0]-0.2
-                    test_points[3061-3+45*i:3061+45*i-2,0] = temp2_p[0,0]-0.1
-                    test_points[3061-3+45*i:3061+45*i,1] = temp2_p[0,1]
-
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    temp2 = vedo.Points(test_points[2848+63:2848+66].reshape((3,3)), c = 'black', r=20)
-                    test_points[2848+63:2848+66] = temp1_p
-                elif i == 5:
-                    temp2_p = test_points[self.constrained_node_indices[201],:].reshape((1,3))
-                    #temp3 = vedo.Points(temp2_p, c = 'blue', r=20)
-                    test_points[3061-1+45*i:3061+45*i,0] = temp2_p[0,0]-0.5
-                    test_points[3061-2+45*i:3061+45*i-1,0] = temp2_p[0,0]-0.4
-                    test_points[3061-3+45*i:3061+45*i-2,0] = temp2_p[0,0]-0.3
-                    test_points[3061-3+45*i:3061+45*i,1] = temp2_p[0,1]
-
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    temp2 = vedo.Points(test_points[2848+63+15:2848+66+15].reshape((3,3)), c = 'black', r=20)
-                    test_points[2848+63+15:2848+66+15] = temp1_p
-                elif i == 6:
-                    temp2_p = test_points[self.constrained_node_indices[201+15],:].reshape((1,3))
-                    temp3 = vedo.Points(temp2_p, c = 'blue', r=20)
-                    test_points[3061-1+45*i:3061+45*i,0] = temp2_p[0,0]-0.3
-                    test_points[3061-2+45*i:3061+45*i-1,0] = temp2_p[0,0]-0.2
-                    test_points[3061-3+45*i:3061+45*i-2,0] = temp2_p[0,0]-0.1
-                    test_points[3061-3+45*i:3061+45*i,1] = temp2_p[0,1]
-
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    temp2 = vedo.Points(test_points[2848+63+15+12:2848+66+15+12].reshape((3,3)), c = 'black', r=20)
-                    test_points[2848+63+15+12:2848+66+15+12] = temp1_p
-                else:
-                    temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                    temp1.append(vedo.Points(temp1_p, c = 'red', r=15,alpha=0.5))
-                    temp2 = vedo.Points(test_points[2848+63+15+24+12*(i-7):2848+66+15+24+12*(i-7)].reshape((3,3)), c = 'black', r=20)
-                    test_points[2848+63+15+24+12*(i-7):2848+66+15+24+12*(i-7)] = temp1_p
-                # temp1_p = test_points[3061-3+45*i:3061+45*i,:]
-                # temp1.append(vedo.Points(temp1_p, c = 'black', r=20))
-                # indices =[]
-                # for j in range(3):
-                #     dist = np.linalg.norm(test_points[2848:2848+168,:] - temp1_p[j,:], axis = 1)
-                #     index = np.argmin(dist)
-                #     if index in indices:
-                #         temp = dist[index] 
-                #         dist[index] = 1000
-                #         index_new = np.argmin(dist)
-                #         dist[index] = temp
-                #         indices.append(index_new)
-                #     else:
-                #         indices.append(index)
-                #     if j == 0: 
-                #         xx= test_points[2848+index,0]
-                #     test_points[2848+index,:] = temp1_p[j,:]                 
-            #temp2 = vedo.Points(test_points[2848:2848+168,:], c = 'blue', r=20)
-            mesh = vedo.Mesh([test_points, self.tri_connectivity])#points, np.array(B['triangles'].tolist()).reshape((length,3))
+            tr.compare(plt, A, B)         
+            plt.show(block = False) 
+            # plt.show()
+            # exit()
+            mesh = vedo.Mesh([self.test_points1, B['triangles']])
             mesh.backColor().lineColor('green').lineWidth(3)
-            vd_test = vedo.Plotter(axes=0)#, mesh
-            vd_test.show(mesh, vd_points1, temp0, temp1, 'Test',viewup="z", interactive=True)   #, vd_points0        
-    
-    def identify_intersection(self, geo, u0_v0_vec, pointset0, pointset1, num_points_u1, num_points_v1, edge_location, relationship):
+            vd_points1 = vedo.Points(self.test_points1, r=20, c='red',alpha=0.5) #[constrained,:]         
+            self.test_points2 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
+            # print(pointset_ini.name)
+            vd_points2 = vedo.Points(self.test_points2, r=15, c='black')          
+            vd_test = vedo.Plotter(axes=1)
+            vd_test.show(mesh, 'Test', viewup="z", interactive=True) 
+            exit()
+   
+    def identify_intersection(self, u0_v0_vec, pointset0, pointset1, num_points_u0, num_points_v0, num_points_u1, num_points_v1, edge_location, relationship):
         if relationship == '-':
             print("Sorry! This has not been implemented yet!") 
-        if relationship == '+':
+        elif relationship == '+':
             print("Sorry! This has not been implemented yet!")                       
-        if relationship == 'T':
-            print('T')   
-            projecting_points, pointset1_indices = self.discritize_ctrl_pointset_edge(pointset1, num_points_u = num_points_u1, num_points_v = num_points_v1, edge_location = edge_location)
-            #points = self.discritize_ctrl_pointset(pointset0, uv_vec = u0_v0_vec, num_points_u = num_points_u0, num_points_v = num_points_v0)
-            num_points = len(projecting_points)
-            constrained_u0_v0_vec, constrained_points = self.project_points(projecting_points, num_points, pointset0)
-            #print('constrained_u0_v0_vec',num_points, constrained_u0_v0_vec.shape, constrained_u0_v0_vec)#
-            indices = []
-            constrained_edge = np.empty((0,2),dtype = int)
-            #print('self.constrained_indices', self.constrained_indices)
+        elif relationship == 'T':
+            print('T', pointset1.name)   
+            pointset1_points, indices_pointset1 = self.construct_constrained_triangulation(pointset1, num_points_u = num_points_u1, num_points_v = num_points_v1, constrained_edge_location = edge_location)        
+            indices_pointset1 = list(indices_pointset1)  
+            num_points = len(pointset1_points)            
+            constrained_u0_v0_vec = self.project_points(pointset1_points, num_points, pointset0)
+            starting_pointset1_index = 0
+            starting_pointset0_index = 0
+            for mem in self.members_dict.values():
+                if mem.options['id'] < self.members_dict[pointset0.name].options['id']:
+                    starting_pointset0_index += len(mem.options['mapping'].toarray())                
+                if mem.options['id'] < self.members_dict[pointset1.name].options['id']:
+                    starting_pointset1_index += len(mem.options['mapping'].toarray())            
 
+            pointset0_indices = []
+            indices_pointset0 = []                        
+            pointset1_indices = []
             for i in range(num_points):
-                #dist = np.linalg.norm(points - constrained_points[i,:], axis = 1)
                 dist = np.linalg.norm(u0_v0_vec - constrained_u0_v0_vec[i,:], axis = 1)
-                index = np.argmin(dist)
+                index = np.argmin(dist)                
+                pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
+                
+                '''Special case for test_shellmesh_eVTOL_0.py'''
+
                 if not (i == num_points - 1 or i==0):
-                    while index in self.constrained_node_indices and np.min(dist) > 1e-6: #
-                        print('xxxindex',index, np.min(dist))
+                    while pointset0_index in self.constrained_node_indices:# and np.min(dist) > 1e-6
+                        print('TESTindex',i, pointset0_index, np.min(dist))
                         dist[index] = 1000
                         index = np.argmin(dist)
-                        #print('TTTindex', index)
-                indices.append(index)
-                u0_v0_vec[index,:] = 1000
-            #print('indices', indices)            
-            constrained_node_indices = indices
+                        pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
+                else:
+                    '''Special case for test_shellmesh_eVTOL_0.py
+                    if i==num_points - 1 and 'rib5' in pointset1.name and 'rear' in pointset0.name:'''
+                    if not self.pointset_ini_check:
+                        while pointset0_index in self.constrained_node_indices and index in self.members_dict[pointset0.name].options['constrained_node_indices'] and index not in self.members_dict[pointset0.name].options['constrained_boundary_node_indices']:
+                            print('XTTTESTindex',i, pointset0_index, np.min(dist), pointset0.name, pointset1.name)
+                            dist[index] = 1000
+                            index = np.argmin(dist)
+                            pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
+
+                pointset0_indices.append(pointset0_index)
+                indices_pointset0.append(index)
+                pointset1_indices.append(self.members_dict[pointset0.name].options['node_indices'][indices_pointset1[i]])
+                u0_v0_vec[index,:] = 1000           
+            
+            
             for i in range(num_points):
-                #print(indices[i], )
-                u0_v0_vec[indices[i],:] = constrained_u0_v0_vec[i,:]
+                u0_v0_vec[indices_pointset0[i],:] = constrained_u0_v0_vec[i,:]
+                
+            self.members_dict[pointset0.name].options['u_v_vec'] = u0_v0_vec  
+            constrained_edges = np.empty((0,2),dtype = int)
+            for i in range(num_points):
+                if i != num_points - 1:
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_pointset0[i], indices_pointset0[i+1]]]).reshape(1,2), axis = 0)
+            self.members_dict[pointset0.name].options['constrained_edges'] = np.append(self.members_dict[pointset0.name].options['constrained_edges'], constrained_edges, axis = 0)
+            self.members_dict[pointset0.name].options['constrained_node_indices'] += indices_pointset0
+            self.members_dict[pointset0.name].options['constrained_node_indices'] = list(set(self.members_dict[pointset0.name].options['constrained_node_indices']))
 
-            if self.pointset_ini_check:
-                for i in range(num_points):
-                    if i != num_points - 1:
-                        constrained_edge = np.append(constrained_edge, np.array([[indices[i], indices[i+1]]]).reshape(1,2), axis = 0)
-                connectivity = self.connectivity_dict[pointset1.name]  
-                sequ = range(self.num_of_nodes, self.num_of_nodes + num_points_u1*num_points_v1) 
-                pointset1_indices = list(pointset1_indices)  
-                
-                j = 0   
-                for i in range(num_points_u1*num_points_v1):
-                    if sequ[i] in pointset1_indices:
-                        connectivity[connectivity == sequ[i]] = indices[pointset1_indices.index(sequ[i])] + self.num_of_nodes_ini
-                    else: 
-                        connectivity[connectivity == sequ[i]] = range(self.num_of_nodes, self.mapping.shape[0])[j]
-                        j+=1
-                
-                self.connectivity_dict[pointset1.name] = connectivity 
-                self.members_dict[pointset1.name].options['node_indices'] = constrained_node_indices +[*range(self.num_of_nodes, self.mapping.shape[0])]
-                self.num_of_nodes += len(range(self.num_of_nodes, self.mapping.shape[0]))
-                return u0_v0_vec, constrained_edge, constrained_node_indices
+            pointset1_length = self.members_dict[pointset1.name].options['mapping'].shape[0]
+            if pointset1 not in self.connected_pointset_list:
+                self.num_of_nodes += pointset1_length 
+                self.connected_pointset_list.append(pointset1) 
             else:
-                print('Sorry')
-                return u0_v0_vec
+                indices_pointset1_reduced = []
+                indices_pointset0_reduced = []
+                for i in indices_pointset1:
+                    if i not in self.members_dict[pointset0.name].options['constrained_node_indices']:
+                        indices_pointset1_reduced.append(i)  
+                        indices_pointset0_reduced.append(indices_pointset0[indices_pointset1.index(i)])             
+                self.num_of_nodes -= len(indices_pointset1_reduced)
+                if 'lower_wing' in pointset0.name:
+                    print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
+                    print('indices_pointset1',indices_pointset1)
+                    # print('indices_pointset0_reduced',indices_pointset0_reduced)
+                    print('indices_pointset1_reduced',indices_pointset1_reduced)
+                    print('pointset1_indices', pointset1_indices)
+                    print()
+                #     print('pointset0.name.options[constrained_node_indices]',len(self.members_dict[pointset0.name].options['constrained_node_indices']))                
+                #     exit()
+                #     print(starting_pointset1_index)
+                #     exit()
+                for mem in self.members_dict.values():
+                    if mem.options['id'] >= self.members_dict[pointset1.name].options['id']:
+                        node_indices = np.copy(np.array(mem.options['node_indices']))
+                        node_indices_old = np.copy(np.array(mem.options['node_indices']))
+                        for i in indices_pointset1_reduced:
+                            num_new = starting_pointset1_index + i                                      
+                            node_indices[node_indices_old>=num_new] -= 1
+                        mem.options['node_indices'] = list(node_indices)
+                if 'lower_wing' in pointset0.name:
+                    print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
+                    exit()
+                basis0 = self.discritize_ctrl_pointset(pointset0, uv_vec = self.members_dict[pointset0.name].options['u_v_vec']) 
+                constrained_indices_pointset0 = self.members_dict[pointset0.name].options['constrained_node_indices']     
+                mapping = self.members_dict[pointset0.name].options['mapping']
+                node_indices = np.array(self.members_dict[pointset0.name].options['node_indices']) 
+                j = 0
+                for i in range(num_points_u0*num_points_v0): 
+                    if i in constrained_indices_pointset0 and node_indices[i]:
+                        if node_indices[i] > starting_pointset0_index and node_indices[i] < starting_pointset0_index + len(mapping.toarray()):
+                            if i in indices_pointset0_reduced: 
+                                mapping[j,:] = basis0.dot(pointset0.absolute_map)[i,:] 
+                            j += 1                
+                    else:
+                        j += 1 
+                self.members_dict[pointset0.name].options['mapping'] = mapping
+                
+                self.test_points1 = (basis0.dot(pointset0.absolute_map)).dot(self.total_cntrl_pts_vector)
 
-            #print('indices',indices)         
-            #print('constrained_edge', constrained_edge)
+            pointset0_indices = []
+            for index in indices_pointset0:                
+                pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
+                pointset0_indices.append(pointset0_index)
+            self.constrained_node_indices += pointset0_indices
+
+            # for mem in self.members_dict.values():
+            #     if mem.options['id'] >= self.members_dict[pointset1.name].options['id']:
+            #         node_indices = np.copy(np.array(mem.options['node_indices']))
+            #         #node_indices_old = np.copy(np.array(mem.options['node_indices']))
+            #         for i in indices_pointset1_reduced:                                     
+            #             node_indices[node_indices==num_new] -= 1
+            #         mem.options['node_indices'] = list(node_indices)
+
+            node_indices = np.array(self.members_dict[pointset1.name].options['node_indices'])                      
+            constrained_indices_pointset1 = self.members_dict[pointset1.name].options['constrained_node_indices']
+
+            j = 0
+            for i in range(num_points_u1*num_points_v1):
+                if i in constrained_indices_pointset1:
+                    if i in indices_pointset1:                        
+                        node_indices[i] = pointset0_indices[indices_pointset1.index(i)]  
+                    else: 
+                        pass
+                else: 
+                    node_indices[i] = range(starting_pointset1_index, starting_pointset1_index + pointset1_length)[j]
+                    j+=1  
+            self.members_dict[pointset1.name].options['node_indices'] = list(node_indices)
+
+        else:
+            print('Warning4')
         
-
-
-    def discritize_ctrl_pointset_edge(self, pointset1, num_points_u = 10, num_points_v = 8, edge_location = 'u0', order_u_fitted = 4, order_v_fitted = 4):
+    def construct_constrained_triangulation(self, pointset1, num_points_u, num_points_v, constrained_edge_location, order_u_fitted = 4, order_v_fitted = 4, plot = False):
         num_control_points_u_fitted = pointset1.shape[0]
         num_control_points_v_fitted = pointset1.shape[1]
         num_points_u_fitted = num_points_u
@@ -424,6 +406,7 @@ class ShellMesh(Mesh):
         col_indices = np.zeros(nnz, np.int32)
         u_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u_fitted), np.ones(num_points_v_fitted)).flatten()
         v_vec = np.einsum('i,j->ij', np.ones(num_points_u_fitted), np.linspace(0., 1., num_points_v_fitted)).flatten()
+        u_v_vec = np.vstack((u_vec, v_vec)).T
         knot_vector_u = np.zeros(num_control_points_u_fitted+order_u_fitted)
         knot_vector_v = np.zeros(num_control_points_v_fitted+order_v_fitted)
         get_open_uniform(order_u_fitted, num_control_points_u_fitted, knot_vector_u)
@@ -438,86 +421,69 @@ class ShellMesh(Mesh):
             shape=(num_points_u_fitted * num_points_v_fitted, num_control_points_u_fitted * num_control_points_v_fitted),
         )
 
-        points = basis0.dot(pointset1.physical_coordinates)   
         indices_u0 = num_points_v * np.arange(num_points_u)  
         indices_v0 = np.arange(num_points_v)
         indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1
         indices_v1 = np.arange(num_points_v)+ (num_points_u*num_points_v) - num_points_v            
-        if edge_location == 'u0':            
+        if constrained_edge_location == 'u0':            
             indices = indices_u0
-        elif edge_location == 'v0': 
+        elif constrained_edge_location == 'v0': 
             indices = indices_v0  
-        elif edge_location == 'u1': 
+        elif constrained_edge_location == 'u1': 
             indices = indices_u1
-        elif edge_location == 'v1':
+        elif constrained_edge_location == 'v1':
             indices = indices_v1      
         else:
-            print('Warning4')          
+            print('Warning3')            
         
-        u1_v1_vec = np.vstack((u_vec, v_vec)).T
-        A = dict(vertices=u1_v1_vec)
-        B = tr.triangulate(A,'pc')
-        points = points[indices, :]   
+        pts = basis0.dot(pointset1.physical_coordinates)  
+        points = pts[indices, :]
+            
         if pointset1 not in self.connected_pointset_list:
-            self.connected_pointset_list.append(pointset1)
+            constrained_edges = np.empty((0,2),dtype = int)  
+            for i in range(num_points_u):
+                if i != num_points_u - 1:
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_u0[i], indices_u0[i+1]]]).reshape(1,2), axis = 0) 
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_u1[i], indices_u1[i+1]]]).reshape(1,2), axis = 0)
+            for i in range(num_points_v):
+                if i != num_points_v - 1:
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_v0[i], indices_v0[i+1]]]).reshape(1,2), axis = 0) 
+                    constrained_edges = np.append(constrained_edges, np.array([[indices_v1[i], indices_v1[i+1]]]).reshape(1,2), axis = 0)                                 
+            A = dict(vertices=u_v_vec, segments=constrained_edges)
+            B = tr.triangulate(A,'p') 
 
+            self.num_of_members += 1 
             self.members_dict[pointset1.name] = Member(    
-                name = pointset1.name,   
-                tri_connectivity = B['triangles'],
-                constrained_node_indices = [0],
-                )   
-            #points, np.array(B['triangles'].tolist()).reshape((length,3))
- 
-            B['triangles'] += self.num_of_nodes
-            self.connectivity_dict[pointset1.name] = B['triangles']
-            #print('mapping', mapping.shape)
-            mapping = basis0.dot(pointset1.absolute_map) 
-            mapping = sps.csc_matrix(np.delete(mapping.toarray(), indices, 0))#
-            # print('mapping', mapping.shape)                
-            # print('self.num_of_nodes', self.num_of_nodes)
-            # print('mapping', type(mapping))
-            # print('indices', len(indices))
-            self.mapping = sps.vstack([self.mapping, mapping])
-            self.mapping = sps.csc_matrix(self.mapping)  
-            indices += self.num_of_nodes 
-            #self.members_dict[pointset1.name].options['node_indices'] = list(indices)    
-            # print('self.num_of_nodes', self.num_of_nodes)                        
+                #name = pointset1.name[9:],   
+                id = self.num_of_members - 1,
+                node_indices = [*range(self.num_of_nodes, self.num_of_nodes+len(u_v_vec))], 
+                tri_connectivity = np.copy(B['triangles']),
+                constrained_edges = constrained_edges,
+                u_v_vec = u_v_vec,
+
+                )           
+            self.members_dict[pointset1.name].options['constrained_node_indices'] = list(indices)
+            self.members_dict[pointset1.name].options['constrained_boundary_node_indices'] = list(indices)                             
         else:
-            print('sorry')
-            # vd_points0 = vedo.Points(points, r=10, c='black',alpha=1.0) 
-            # points = points[indices, :]              
-            # vd_points1 = vedo.Points(points, r=15, c='red',alpha=0.5)
-            # vd_test = vedo.Plotter(axes=1)
-            # vd_test.show(vd_points0, vd_points1, 'Test', viewup="z", interactive=True)  #mesh,  
-            # exit()
+            self.members_dict[pointset1.name].options['constrained_node_indices'] += list(indices)
+            self.members_dict[pointset1.name].options['constrained_node_indices'] = list(set(self.members_dict[pointset1.name].options['constrained_node_indices'])) 
+            self.members_dict[pointset1.name].options['constrained_boundary_node_indices'] += list(indices)   
+            self.members_dict[pointset1.name].options['constrained_boundary_node_indices'] = list(set(self.members_dict[pointset1.name].options['constrained_boundary_node_indices']))     
+        
+        mapping = basis0.dot(pointset1.absolute_map) 
+        mapping = sps.csc_matrix(np.delete(mapping.toarray(), self.members_dict[pointset1.name].options['constrained_boundary_node_indices'], 0))
+        self.members_dict[pointset1.name].options['mapping'] = mapping         
 
-
+        if plot: 
+            print(np.shape(B['triangles']))
+            tr.compare(plt, A, B)
+            plt.show(block = False)
+            vd_points0 = vedo.Points(pts, r=10, c='black',alpha=1.0)              
+            vd_points1 = vedo.Points(points, r=15, c='red',alpha=0.5)
+            vd_test = vedo.Plotter(axes=1)
+            vd_test.show(vd_points0, vd_points1, 'Test', viewup="z", interactive=True)
+        
         return points, indices
-
-    def discritize_ctrl_pointset(self, ctrl_pointset, uv_vec, num_points_u = 10, num_points_v = 8, order_u_fitted = 4, order_v_fitted = 4):
-        num_control_points_u_fitted = ctrl_pointset.shape[0]
-        num_control_points_v_fitted = ctrl_pointset.shape[1]
-        nnz = num_points_u * num_points_v * order_u_fitted * order_v_fitted
-        data = np.zeros(nnz)
-        row_indices = np.zeros(nnz, np.int32)
-        col_indices = np.zeros(nnz, np.int32)
-        knot_vector_u = np.zeros(num_control_points_u_fitted+order_u_fitted)
-        knot_vector_v = np.zeros(num_control_points_v_fitted+order_v_fitted)
-        surf_u_vec = uv_vec[:,0]
-        surf_v_vec = uv_vec[:,1]   
-        get_open_uniform(order_u_fitted, num_control_points_u_fitted, knot_vector_u)
-        get_open_uniform(order_v_fitted, num_control_points_v_fitted, knot_vector_v)
-        get_basis_surface_matrix(
-            order_u_fitted, num_control_points_u_fitted, 0, surf_u_vec, knot_vector_u,
-            order_v_fitted, num_control_points_v_fitted, 0, surf_v_vec, knot_vector_v,
-            num_points_u * num_points_v, data, row_indices, col_indices,
-                )
-        basis0 = sps.csc_matrix(
-            (data, (row_indices, col_indices)), 
-            shape=(num_points_u * num_points_v, num_control_points_u_fitted * num_control_points_v_fitted),
-        )
-        points = basis0.dot(ctrl_pointset.physical_coordinates)
-        return points, basis0  
 
     def project_points(self, points, num_points, pointset0):
         order_u = 4
@@ -532,6 +498,7 @@ class ShellMesh(Mesh):
         knot_vector_v = np.zeros(num_control_points_v +order_v)
         get_open_uniform(order_u, num_control_points_u, knot_vector_u)
         get_open_uniform(order_v, num_control_points_v, knot_vector_v)
+        
         cps = pointset0.physical_coordinates
         projection_direction=np.array([0., 0., 0.])
         projection_direction = np.array((projection_direction),ndmin=2)
@@ -547,12 +514,11 @@ class ShellMesh(Mesh):
         surfs_num_control_points_u = np.empty((0,1),dtype = int)
         surfs_num_control_points_v = np.empty((0,1),dtype = int)
         surfs_cp = np.empty((0,num_control_points_u * num_control_points_v*3),dtype = int)
-        for i in range(1): 
-            surfs_u_order = np.append(surfs_u_order,np.array((order_u),ndmin=2),axis = 0)
-            surfs_v_order = np.append(surfs_v_order,np.array((order_v),ndmin=2),axis = 0)
-            surfs_num_control_points_u = np.append(surfs_num_control_points_u,np.array(num_control_points_u, ndmin=2),axis = 0)
-            surfs_num_control_points_v = np.append(surfs_num_control_points_v,np.array(num_control_points_v, ndmin=2),axis = 0)
-            surfs_cp = np.append(surfs_cp,cps.reshape((1,num_control_points_u * num_control_points_v*3)),axis = 0)
+        surfs_u_order = np.append(surfs_u_order,np.array((order_u),ndmin=2),axis = 0)
+        surfs_v_order = np.append(surfs_v_order,np.array((order_v),ndmin=2),axis = 0)
+        surfs_num_control_points_u = np.append(surfs_num_control_points_u,np.array(num_control_points_u, ndmin=2),axis = 0)
+        surfs_num_control_points_v = np.append(surfs_num_control_points_v,np.array(num_control_points_v, ndmin=2),axis = 0)
+        surfs_cp = np.append(surfs_cp,cps.reshape((1,num_control_points_u * num_control_points_v*3)),axis = 0)
         compute_surface_projection(
             surfs_u_order.reshape((len(range(1)))),  surfs_num_control_points_u.reshape((len(range(1)))),#np.array((num_control_points_u,)).reshape((1,1)),
             surfs_v_order.reshape((len(range(1)))),  surfs_num_control_points_v.reshape((len(range(1)))),#np.array((num_control_points_v,)).reshape((1,1)),
@@ -573,24 +539,77 @@ class ShellMesh(Mesh):
             order_v, num_control_points_v, 0, v_vec, knot_vector_v,
             num_points, data, row_indices, col_indices,
         )
-        basis0 = sps.csc_matrix(
-            (data, (row_indices, col_indices)), 
-            shape=(num_points, num_control_points_u * num_control_points_v),
-        )           
-        pts = basis0.dot(cps)
+        # basis0 = sps.csc_matrix(
+        #     (data, (row_indices, col_indices)), 
+        #     shape=(num_points, num_control_points_u * num_control_points_v),
+        # )           
         uv_vec = np.append(u_vec.reshape((num_points,1)), v_vec.reshape((num_points,1)), axis=1)
-        return uv_vec, pts
+        return uv_vec
  
 
-    def create_triangulation(self):
-        pass
+    def discritize_ctrl_pointset(self, ctrl_pointset, uv_vec, order_u_fitted = 4, order_v_fitted = 4):
+        num_control_points_u_fitted = ctrl_pointset.shape[0]
+        num_control_points_v_fitted = ctrl_pointset.shape[1]
+        nnz = len(uv_vec) * order_u_fitted * order_v_fitted
+        data = np.zeros(nnz)
+        row_indices = np.zeros(nnz, np.int32)
+        col_indices = np.zeros(nnz, np.int32)
+        knot_vector_u = np.zeros(num_control_points_u_fitted+order_u_fitted)
+        knot_vector_v = np.zeros(num_control_points_v_fitted+order_v_fitted)
+        surf_u_vec = uv_vec[:,0]
+        surf_v_vec = uv_vec[:,1]   
+        get_open_uniform(order_u_fitted, num_control_points_u_fitted, knot_vector_u)
+        get_open_uniform(order_v_fitted, num_control_points_v_fitted, knot_vector_v)
+        get_basis_surface_matrix(
+            order_u_fitted, num_control_points_u_fitted, 0, surf_u_vec, knot_vector_u,
+            order_v_fitted, num_control_points_v_fitted, 0, surf_v_vec, knot_vector_v,
+            len(uv_vec), data, row_indices, col_indices,
+                )
+        basis0 = sps.csc_matrix(
+            (data, (row_indices, col_indices)), 
+            shape=(len(uv_vec), num_control_points_u_fitted * num_control_points_v_fitted),
+        )
+        return basis0  
+
+    def construct_whole_structure_mesh(self, plot = False):
+        constrained = []  
+        print()         
+        for memb in self.members_dict.values():
+            if plot:#memb.options['id'] == 0 or memb.options['id'] == 1:#   
+                conn = memb.options['tri_connectivity'] 
+                inde = memb.options['node_indices']
+                cons = memb.options['constrained_node_indices']
+                for i in range(len(conn)):
+                    for j in range(3):                    
+                        conn[i,j] = inde[conn[i,j]] 
+                for i in range(len(cons)):
+                    cons[i] = inde[cons[i]] 
+ 
+                self.tri_connectivity = np.append(self.tri_connectivity, conn, axis = 0)      
+                self.mapping = sps.csc_matrix(sps.vstack([self.mapping, memb.options['mapping']]))
+                #print(memb.options['id'], len(memb.options['mapping'].toarray()), cons)
+                #print()
+                constrained += cons
+        # print()
+        print('len(constrained)',len(constrained),len(list(set(constrained))))
+        constrained = list(set(constrained))
+        print('self.constrained_node_indices',len(self.constrained_node_indices))
+        print('self.tri_connectivity', np.shape(self.tri_connectivity))
+        test_points = self.mapping.dot(self.total_cntrl_pts_vector)
+
+        if plot:
+            mesh = vedo.Mesh([test_points, self.tri_connectivity])
+            mesh.backColor().lineColor('green').lineWidth(3)
+            vd_points1 = vedo.Points(test_points[constrained,:] , r=15, c='red',alpha=0.5) # 
+            vd_points2 = vedo.Points(test_points[1916,:].reshape(1,3), r=20, c='black') #,vd_points2   
+            vd_test = vedo.Plotter(axes=1)
+            vd_test.show(mesh, vd_points1, 'Test', viewup="z", interactive=True) 
 
     def pymeshopt(self):
         fixedvert = np.array([])
         print(len(self.projected))
         for i in range(len(self.projected)):
             fixedvert = np.concatenate((fixedvert,self.projected[i]))
-        fixedvert = self.constrained_node_indices.astype(np.int32)
         itr=[0,1,2,1,0,1,0,1,3]
         
         # m = meshopt(self.pointCoords.astype(np.float32),self.conne.astype(np.int32),self.quadlist.astype(np.int32),w1=0.5, w2=0.5,w3=0.45,w4=0.9,itr =itr,plot = False,fixedvert,self.dupvert, ref_geo)
@@ -602,58 +621,3 @@ class ShellMesh(Mesh):
 if __name__ == '__main__':
     from shellmesh import ShellMesh
     shell_mesh = ShellMesh('shell_mesh')
-
-'''    def mapping_from_OML(self): 
-        relative_map = np.identity(len(self.total_cntrl_pts_vector))
-        relative_map = sps.csc_matrix(relative_map)
-        pointset = PointSet(
-            pointset_id = self.current_id,
-            shape = np.append(len(self.total_cntrl_pts_vector),3),
-            output_starting_ind = self.current_pointset_pts,
-            parent_pointers = [],
-            absolute_map = None,
-            relative_map = relative_map,
-            offset = np.array([0., 0., 0.]),            
-            offset_absolute_map = None,
-            physical_coordinates = None,
-            permutation_matrix = None,
-            name = 'OML'
-            )
-        self.pointsets_dict[self.current_id] = pointset
-        self.current_id += 1
-        self.current_pointset_pts += np.cumprod(pointset.shape)[-2]
-        
-        self.assemble(pointset = pointset)
-        points = self.evaluate(pointset = pointset)
-        color = list(colors.colors.values())[self.current_id]
-        vp_points = vedo.Points(points, r=5, c=color,alpha=0.3)
-        vp_test = Plotter(axes=1)
-        vp_test.show(vp_points, 'Test', viewup="z", interactive=True)
-        pass
-
-            
-        ##pts = basis0.dot(bspline_entity.control_points) 
-        # geo.assemble(pointset = pointset)
-        # points = geo.evaluate(pointset = pointset)
-        # color = list(colors.colors.values())[self.current_id]
-        # vp_points = vedo.Points(points, r=5, c=color,alpha=0.3)
-        # vp_test = Plotter(axes=1)
-        # vp_test.show(vp_points, 'Test', viewup="z", interactive=False)
-
-            u_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u), np.ones(num_points_v)).flatten()
-            v_vec = np.einsum('i,j->ij', np.ones(num_points_u), np.linspace(0., 1., num_points_v)).flatten()
-            # print(u_vec[:10])
-            # print(v_vec[:10]) 
-            # vertices1 = np.concatenate((verts,edge,edge2))
-            # print(np.shape(vertices1)) 
-            # edge = np.array(([[0,3],[17,3],[17,14],[0,14],[2,6],[6,12],[12,16]]), dtype = np.int32)#,[21,22]
-            # print(np.shape(edge)) 
-            # A = dict(vertices=vertices1, segments=edge)#
-            # B = tr.triangulate(A,'pc')
-            # #print(B)
-            # tr.compare(plt, A, B)
-            # A = dict(vertices=vertices1)#, segments=edge
-            # B = tr.triangulate(A)
-            # tr.compare(plt, A, B)
-            # plt.show()
-'''

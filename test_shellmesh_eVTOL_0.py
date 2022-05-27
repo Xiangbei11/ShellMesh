@@ -52,18 +52,24 @@ for pointset in members_ctrl_pointset_list:
         num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 67, 40, 15, 4 #65, 40, 15, 4
         intersection_list_upper_wing.append([147,pointset.pointset_id,num_points_u0,num_points_v0,num_points_u1,num_points_v1,'u0','T']) 
         intersection_list_lower_wing.append([150,pointset.pointset_id,num_points_u0,num_points_v0,num_points_u1,num_points_v1,'u1','T']) 
-        num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 56, 4, 20, 4      
+        num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 56, 4, 15, 4      
         intersection_list_primary_spar.append([127,pointset.pointset_id,num_points_u0, num_points_v0, num_points_u1, num_points_v1,'v0','T'])
-        intersection_list_rear_spar.append([128, pointset.pointset_id, 'T'])
+        intersection_list_rear_spar.append([128,pointset.pointset_id,num_points_u0, num_points_v0, num_points_u1, num_points_v1,'v1','T'])
 
-num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 70, 50, 70, 50
-intersection_list_upper_wing_test = [intersection_list_upper_wing[0],intersection_list_upper_wing[1],intersection_list_upper_wing[3]]
-#print(intersection_list_upper_wing_test )
-shell_mesh.identify_intersection_list(geo, intersection_list_upper_wing, plot = True)
-print('num_of_nodes', shell_mesh.num_of_nodes)
-print('num_of_nodes_ini', shell_mesh.num_of_nodes_ini) #0
+
+# intersection_list_upper_wing_test = [intersection_list_upper_wing[0],intersection_list_upper_wing[1],intersection_list_upper_wing[3]]
+shell_mesh.identify_intersection_list(geo, intersection_list_upper_wing)
+#shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
+#shell_mesh.identify_intersection_list(geo, [intersection_list_primary_spar[0], intersection_list_primary_spar[1], intersection_list_primary_spar[2], intersection_list_primary_spar[3], intersection_list_primary_spar[4], intersection_list_primary_spar[5], intersection_list_primary_spar[6]], plot = True)#
+shell_mesh.identify_intersection_list(geo, intersection_list_primary_spar)
+shell_mesh.identify_intersection_list(geo, intersection_list_rear_spar)
+#shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing,plot = True)
+shell_mesh.identify_intersection_list(geo, [intersection_list_lower_wing[0]])
+#shell_mesh.identify_intersection_list(geo, [intersection_list_rear_spar[0], intersection_list_rear_spar[1], intersection_list_rear_spar[2], intersection_list_rear_spar[3], intersection_list_rear_spar[4], intersection_list_rear_spar[5]], plot = True)
+shell_mesh.construct_whole_structure_mesh(plot = True)
 exit()
-shell_mesh.identify_intersection_list(geo, intersection_list_primary_spar, plot = True)
+
+
 
 vd_points3 = vedo.Points(points, r=10, c='black',alpha=1.0)
 vd_points4 = vedo.Points(pts, r=15, c='red',alpha=0.5)
@@ -77,42 +83,14 @@ vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) #vd_points0, vd_p
 
 
 
-
-
-
-pointset_list = oml_pointset_list + structures_mesh.pointset_list
-
-for pointset in geo.pointsets_dict.values():
-    print(pointset.pointset_id,pointset.name, type(pointset).__name__)
-print()
-for pointset in pointset_list:
-    print(pointset.pointset_id,pointset.name)
-print(geo.pointsets_dict[1])
-print(geo.pointsets_dict[1].physical_coordinates)
-geo.assemble(pointset = geo.pointsets_dict[1])
-points = geo.evaluate(pointset = geo.pointsets_dict[1])
-print(points)
-
-
 temp = vedo.Plotter()
 temp.show(interactive=True)
 
-shell_mesh.create_triangulation()
 shell_mesh.transform_to_quad()
 shell_mesh.write_vtk('eVTOL.vtk')
 
 
 
-# for pointset in structures_mesh.pointset_list:
-#     print(pointset.pointset_id,pointset.name)
-
-#whole_structure_pointset_list = pointsets_dict
-
-
-
-shell_mesh = ShellMesh('shell_mesh', structures_mesh.pointset_list)
-
-''' shell_mesh.extract_pointsets_from_OML()'''
 
 #TODO change name 
 shell_mesh.add_design_geometry(geo)
