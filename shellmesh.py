@@ -296,7 +296,7 @@ class ShellMesh(Mesh):
 
                 pointset0_indices.append(pointset0_index)
                 indices_pointset0.append(index)
-                pointset1_indices.append(self.members_dict[pointset0.name].options['node_indices'][indices_pointset1[i]])
+                pointset1_indices.append(self.members_dict[pointset1.name].options['node_indices'][indices_pointset1[i]])
                 u0_v0_vec[index,:] = 1000           
             
             
@@ -325,11 +325,11 @@ class ShellMesh(Mesh):
                         indices_pointset0_reduced.append(indices_pointset0[indices_pointset1.index(i)])             
                 self.num_of_nodes -= len(indices_pointset1_reduced)
                 if 'lower_wing' in pointset0.name:
-                    print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
-                    print('indices_pointset1',indices_pointset1)
-                    # print('indices_pointset0_reduced',indices_pointset0_reduced)
-                    print('indices_pointset1_reduced',indices_pointset1_reduced)
-                    print('pointset1_indices', pointset1_indices)
+                    # print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
+                    # print('indices_pointset1',indices_pointset1)
+                    # # print('indices_pointset0_reduced',indices_pointset0_reduced)
+                    # print('indices_pointset1_reduced',indices_pointset1_reduced)
+                    # print('pointset1_indices', pointset1_indices)
                     print()
                 #     print('pointset0.name.options[constrained_node_indices]',len(self.members_dict[pointset0.name].options['constrained_node_indices']))                
                 #     exit()
@@ -343,9 +343,9 @@ class ShellMesh(Mesh):
                             num_new = starting_pointset1_index + i                                      
                             node_indices[node_indices_old>=num_new] -= 1
                         mem.options['node_indices'] = list(node_indices)
-                if 'lower_wing' in pointset0.name:
-                    print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
-                    exit()
+                # if 'lower_wing' in pointset0.name:
+                #     print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
+                    #exit()
                 basis0 = self.discritize_ctrl_pointset(pointset0, uv_vec = self.members_dict[pointset0.name].options['u_v_vec']) 
                 constrained_indices_pointset0 = self.members_dict[pointset0.name].options['constrained_node_indices']     
                 mapping = self.members_dict[pointset0.name].options['mapping']
@@ -369,29 +369,44 @@ class ShellMesh(Mesh):
                 pointset0_indices.append(pointset0_index)
             self.constrained_node_indices += pointset0_indices
 
-            # for mem in self.members_dict.values():
-            #     if mem.options['id'] >= self.members_dict[pointset1.name].options['id']:
-            #         node_indices = np.copy(np.array(mem.options['node_indices']))
-            #         #node_indices_old = np.copy(np.array(mem.options['node_indices']))
-            #         for i in indices_pointset1_reduced:                                     
-            #             node_indices[node_indices==num_new] -= 1
-            #         mem.options['node_indices'] = list(node_indices)
-
-            node_indices = np.array(self.members_dict[pointset1.name].options['node_indices'])                      
+            pointset1_node_indices = np.copy(np.array(self.members_dict[pointset1.name].options['node_indices']))  
+            pointset1_node_indices_old = list(np.copy(np.array(self.members_dict[pointset1.name].options['node_indices'])))                  
             constrained_indices_pointset1 = self.members_dict[pointset1.name].options['constrained_node_indices']
 
             j = 0
             for i in range(num_points_u1*num_points_v1):
                 if i in constrained_indices_pointset1:
                     if i in indices_pointset1:                        
-                        node_indices[i] = pointset0_indices[indices_pointset1.index(i)]  
+                        pointset1_node_indices[i] = pointset0_indices[indices_pointset1.index(i)]  
                     else: 
                         pass
                 else: 
-                    node_indices[i] = range(starting_pointset1_index, starting_pointset1_index + pointset1_length)[j]
+                    pointset1_node_indices[i] = range(starting_pointset1_index, starting_pointset1_index + pointset1_length)[j]
                     j+=1  
-            self.members_dict[pointset1.name].options['node_indices'] = list(node_indices)
-
+            self.members_dict[pointset1.name].options['node_indices'] = list(pointset1_node_indices)
+            if 'primary_spar' in pointset0.name and 'rib11' in pointset1.name:
+                print(self.members_dict[pointset0.name].options['node_indices'])
+                exit()
+            # for mem in self.members_dict.values():
+            #     if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
+                    
+            #         node_indices = np.copy(np.array(mem.options['node_indices']))
+            #         if mem.options['id'] ==3 and 'lower' in pointset0.name:
+            #             print(node_indices)
+            #         for i in pointset1_node_indices_old: 
+            #             # if mem.options['id'] ==3 and 'lower' in pointset0.name:
+            #             #     print(i, node_indices[node_indices==i], pointset0_indices[pointset1_indices.index(i)])                                    
+                        
+            #             node_indices[node_indices==i] = pointset1_node_indices[pointset1_node_indices_old.index(i)]
+            #         if mem.options['id'] ==3 and 'lower' in pointset0.name:
+            #             print()#np.array(mem.options['node_indices'])
+            #             print(node_indices)
+            #             print()
+            #             print(pointset1_node_indices_old)
+            #             print()
+            #             print(list(pointset1_node_indices))
+            #             exit()
+            #         mem.options['node_indices'] = list(node_indices)
         else:
             print('Warning4')
         
@@ -587,8 +602,8 @@ class ShellMesh(Mesh):
  
                 self.tri_connectivity = np.append(self.tri_connectivity, conn, axis = 0)      
                 self.mapping = sps.csc_matrix(sps.vstack([self.mapping, memb.options['mapping']]))
-                #print(memb.options['id'], len(memb.options['mapping'].toarray()), cons)
-                #print()
+                # print(memb.options['id'], len(memb.options['mapping'].toarray()), cons)
+                # print()
                 constrained += cons
         # print()
         print('len(constrained)',len(constrained),len(list(set(constrained))))
@@ -598,7 +613,7 @@ class ShellMesh(Mesh):
         test_points = self.mapping.dot(self.total_cntrl_pts_vector)
 
         if plot:
-            mesh = vedo.Mesh([test_points, self.tri_connectivity])
+            mesh = vedo.Mesh([test_points, self.tri_connectivity], alpha=0.5)
             mesh.backColor().lineColor('green').lineWidth(3)
             vd_points1 = vedo.Points(test_points[constrained,:] , r=15, c='red',alpha=0.5) # 
             vd_points2 = vedo.Points(test_points[1916,:].reshape(1,3), r=20, c='black') #,vd_points2   
