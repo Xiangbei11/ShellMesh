@@ -328,20 +328,24 @@ class ShellMesh(Mesh):
                         pointset0_indices_reduced.append(pointset0_indices[indices_pointset1.index(i)])            
                 self.num_of_nodes -= len(indices_pointset1_reduced)
 
-                if 'lower_wing' in pointset0.name:
-                    print('[rear_spar].options[node_indices]',self.members_dict['ctrl_pts_rear_spar'].options['node_indices'])
-                    print()
                 new_list = []
                 old_list = []
                 for mem in self.members_dict.values():
-                    if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
+                    if mem.options['id'] != self.members_dict[pointset1.name].options['id']:
                         node_indices = np.copy(np.array(mem.options['node_indices']))
                         node_indices_old = np.copy(np.array(mem.options['node_indices']))
-                        for i in indices_pointset1_reduced:  
-                            node_indices[node_indices_old>=pointset1_indices[indices_pointset1_reduced.index(i)]] -= 1 
-                             
-                        for i in indices_pointset1:                               
-                            node_indices[node_indices_old==pointset1_indices[indices_pointset1.index(i)]] = pointset0_indices[indices_pointset1.index(i)]                           
+                        for i in pointset1_indices_reduced:  
+                            node_indices[node_indices_old>i] -= 1         
+
+                            temp = node_indices[node_indices_old == i]
+                            if len(temp) ==1:
+                                new_list.append(temp[0])
+                                old_list.append(i)
+                            elif len(temp) ==0:
+                                pass
+                            else:
+                                print('Warning7')
+                                exit()                            
                         mem.options['node_indices'] = list(node_indices)      
 
             if not self.pointset_ini_check: 
@@ -384,51 +388,13 @@ class ShellMesh(Mesh):
                     j+=1  
             self.members_dict[pointset1.name].options['node_indices'] = list(pointset1_node_indices)
 
-            # if pointset1_check:
-            #     for mem in self.members_dict.values():
-            #         if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
-            #             node_indices = np.copy(np.array(mem.options['node_indices']))
-            #             node_indices_old = np.copy(np.array(mem.options['node_indices']))
-            #             for i in indices_pointset1:  
-            #                 node_indices[node_indices_old>=pointset1_indices[indices_pointset1.index(i)]] -= 1   
-            #             for i in indices_pointset1:                               
-            #                 node_indices[node_indices_old==pointset1_indices[indices_pointset1.index(i)]] = pointset0_indices[indices_pointset1.index(i)]                           
-            #             mem.options['node_indices'] = list(node_indices)                
-            #     for mem in self.members_dict.values():
-            #         if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
-            #             node_indices = np.copy(np.array(mem.options['node_indices']))
-            #             for i in new_list:
-            #                 node_indices[node_indices == i] =  pointset0_indices[pointset1_indices.index(old_list[new_list.index(i)])]
-            #             mem.options['node_indices'] = list(node_indices) 
-
-            if 'lower_wing' in pointset0.name:
-                #exit()
-                print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
-                print()
-                print(starting_pointset1_index)
-                print()
-                print(indices_pointset1_reduced)
-                        #     print(k)
-                # # print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib7'].options['node_indices'])
-                # # print()
-                # print('pointset1_indices_reduced', len(pointset1_indices_reduced),'pointset1_indices',len(pointset1_indices))
-                # print()
-                # new_list = list(set(new_list))
-                # new_list.sort()                
-                # print('new_list',new_list)
-                # print('old_list',old_list)
-                # print()
-                # pointset1_indices_new = []
-                # for index in indices_pointset1:                
-                #     pointset1_index = self.members_dict[pointset1.name].options['node_indices'][index]
-                #     pointset1_indices_new.append(pointset1_index)
-                # print('pointset1_indices_new', pointset1_indices_new) 
-                # print()                  
-                # print('pointset1_indices', pointset1_indices)
-                # print()                
-                print('pointset0_indices', pointset0_indices)
-            
-                #exit()
+            if pointset1_check and len(new_list)!=0:
+                for mem in self.members_dict.values():
+                    if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
+                        node_indices = np.copy(np.array(mem.options['node_indices']))
+                        for i in new_list:
+                            node_indices[node_indices==i] = pointset0_indices[pointset1_indices.index(old_list[new_list.index(i)])]
+                        mem.options['node_indices'] = list(node_indices) 
         else:
             print('Warning4')
         
@@ -645,18 +611,18 @@ class ShellMesh(Mesh):
         constrained = list(set(constrained))
         print('self.constrained_node_indices',len(self.constrained_node_indices))
         print('self.tri_connectivity', np.shape(self.tri_connectivity))
-        # print()
-        # print('[ctrl_pts_rear_spar].options[node_indices]',self.members_dict['ctrl_pts_rear_spar'].options['node_indices'])
+        print()
+        print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
         test_points = self.mapping.dot(self.total_cntrl_pts_vector)
 
         if plot:
             mesh = vedo.Mesh([test_points, self.tri_connectivity], alpha=0.3)
             mesh.backColor().lineColor('green').lineWidth(3)
-            vd_points1 = vedo.Points(test_points[[743, 2706, 2707],:], r=25, c='red') # 743, 2719, 2720
-            #vd_points1 = vedo.Points(test_points[constrained,:], r=20, c='red') 
-            vd_points2 = vedo.Points(test_points[temp,:], r=25, c='black',alpha = 0.7) #,vd_points2   , vd_points2 
+            #vd_points1 = vedo.Points(test_points[[743, 2706, 2707],:], r=25, c='red') # 743, 2719, 2720
+            vd_points1 = vedo.Points(test_points[constrained,:], r=20, c='red',alpha = 0.7)  
+            #vd_points2 = vedo.Points(test_points[temp,:], r=25, c='black') #,vd_points2   , vd_points2 
             vd_test = vedo.Plotter(axes=1)
-            vd_test.show(mesh, vd_points1,vd_points2, 'Test', viewup="z", interactive=True) 
+            vd_test.show(mesh, 'Test', vd_points1, viewup="z", interactive=True) 
 
     def pymeshopt(self):
         fixedvert = np.array([])
