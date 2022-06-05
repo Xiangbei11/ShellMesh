@@ -23,7 +23,6 @@ from member import Member
 class ShellMesh(Mesh):
     def __init__(self, name, pointset_list=[]) -> None:
         super().__init__(name, pointset_list)
-        self.constrained_node_indices = []
         self.num_of_nodes = 0
         self.connected_pointset_list = []
         self.members_dict = {}
@@ -69,12 +68,12 @@ class ShellMesh(Mesh):
             order_v, num_control_points_v, 0, v_vec, knot_vector_v,
             num_points, data, row_indices, col_indices,
         )
-        basis0 = sps.csc_matrix(
+        basis_matrix = sps.csc_matrix(
             (data, (row_indices, col_indices)),
             shape=(num_points, num_control_points_u * num_control_points_v),
         )
         relative_map = np.zeros((num_points,len(geo.total_cntrl_pts_vector)))
-        linear_map = basis0.dot(np.identity(num_control_points_u * num_control_points_v))
+        linear_map = basis_matrix.dot(np.identity(num_control_points_u * num_control_points_v))
         j = 0
         for surf in geo.input_bspline_entity_dict.values():
             if surf == bspline_surface:
@@ -179,7 +178,7 @@ class ShellMesh(Mesh):
             self.connected_pointset_list.append(pointset_ini)
             self.num_of_members += 1
             self.num_of_nodes += len(u0_v0_vec)    
-            basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec)
+            basis_matrix = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec)
 
             constrained_edges = np.empty((0,2),dtype = int)
             indices_u0 = num_points_v0 * np.arange(num_points_u0)  
@@ -202,10 +201,11 @@ class ShellMesh(Mesh):
                 constrained_node_indices = [],
                 u_v_vec = np.copy(u0_v0_vec),
                 constrained_edges = constrained_edges,
-                mapping = sps.csc_matrix(basis0.dot(pointset_ini.absolute_map))
+                mapping = sps.csc_matrix(basis_matrix.dot(pointset_ini.absolute_map)),
+                constrained_boundary_node_indices =[]
                 )                             
         else:
-            if not np.array_equal(self.members_dict[pointset_ini.name].options['u_v_vec'], u0_v0_vec):
+            if not np.array_equal(self.members_dict[pointset_ini.name].options['u_v_vec'], u0_v0_vec) and intersection_list[0][7] == 'T':
                 print('Warning5')
  
         for intersection in intersection_list:
@@ -217,7 +217,7 @@ class ShellMesh(Mesh):
                 geo.assemble(pointset = pointset1)
                 _ = geo.evaluate(pointset = pointset1) 
             self.identify_intersection(
-                self.members_dict[pointset0.name].options['u_v_vec'],
+                np.copy(self.members_dict[pointset0.name].options['u_v_vec']),
                 pointset0, pointset1, 
                 num_points_u0 = intersection[2], num_points_v0 = intersection[3], 
                 num_points_u1 = intersection[4], num_points_v1 = intersection[5], 
@@ -225,8 +225,8 @@ class ShellMesh(Mesh):
                 )
         
         if self.pointset_ini_check:
-            basis0 = self.discritize_ctrl_pointset(pointset_ini, uv_vec = self.members_dict[pointset_ini.name].options['u_v_vec'])            
-            self.members_dict[pointset_ini.name].options['mapping'] = sps.csc_matrix(basis0.dot(pointset_ini.absolute_map))
+            basis_matrix = self.discritize_ctrl_pointset(pointset_ini, uv_vec = self.members_dict[pointset_ini.name].options['u_v_vec'])            
+            self.members_dict[pointset_ini.name].options['mapping'] = sps.csc_matrix(basis_matrix.dot(pointset_ini.absolute_map))
         else:   
             pass                                          
         
@@ -238,23 +238,110 @@ class ShellMesh(Mesh):
             plt.show(block = False) 
             # plt.show()
             # exit()
-            mesh = vedo.Mesh([self.test_points1, B['triangles']])
+            test_points1 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
+            mesh = vedo.Mesh([test_points1, B['triangles']])
             mesh.backColor().lineColor('green').lineWidth(3)
-            vd_points1 = vedo.Points(self.test_points1, r=20, c='red',alpha=0.5) #[constrained,:]         
-            self.test_points2 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
-            # print(pointset_ini.name)
-            vd_points2 = vedo.Points(self.test_points2, r=15, c='black')          
+            vd_points1 = vedo.Points(test_points1, r=20, c='red',alpha=0.5)  
             vd_test = vedo.Plotter(axes=1)
-            vd_test.show(mesh, 'Test', viewup="z", interactive=True) 
+            vd_test.show(mesh, vd_points1, 'Test', viewup="z", interactive=True) 
             exit()
    
     def identify_intersection(self, u0_v0_vec, pointset0, pointset1, num_points_u0, num_points_v0, num_points_u1, num_points_v1, edge_location, relationship):
         if relationship == '-':
             print("Sorry! This has not been implemented yet!") 
+            basis_matrix0 = self.discritize_ctrl_pointset(pointset0, uv_vec = self.members_dict[pointset0.name].options['u_v_vec'])
+            basis_matrix1 = self.discritize_ctrl_pointset(pointset1, uv_vec = self.members_dict[pointset1.name].options['u_v_vec'])
+            mapping0 = basis_matrix0.dot(pointset0.absolute_map)#self.members_dict[pointset0.name].options['mapping']
+            mapping1 = basis_matrix1.dot(pointset1.absolute_map)#self.members_dict[pointset1.name].options['mapping']
+            indices_list = [0,0]
+            pointset = [pointset0, pointset1]
+            for i in range(2):
+                constrained_edge_location = edge_location[i]
+                if i == 0:
+                    num_points_u = num_points_u0
+                    num_points_v = num_points_v0
+                else:
+                    num_points_u = num_points_u1
+                    num_points_v = num_points_v1       
+                if constrained_edge_location == 'u0':            
+                    indices_list[i] = list(num_points_v * np.arange(num_points_u))
+                elif constrained_edge_location == 'v0': 
+                    indices_list[i] = list(np.arange(num_points_v))
+                elif constrained_edge_location == 'u1': 
+                    indices_list[i] = list(num_points_v * np.arange(num_points_u)+num_points_v-1)
+                elif constrained_edge_location == 'v1':
+                    indices_list[i] = list(np.arange(num_points_v)+ (num_points_u*num_points_v) - num_points_v)      
+                else:
+                    print('Warning9')                  
+            points0 = mapping0.dot(self.total_cntrl_pts_vector)[indices_list[0],:]
+            points1 = mapping1.dot(self.total_cntrl_pts_vector)[indices_list[1],:]
+            diff = np.linalg.norm(points0-points1, axis =1)
+            if len(diff[diff>1e-1]) != 0:
+                print('Warning10')
+
+            for i in range(2):
+                self.members_dict[pointset[i].name].options['constrained_node_indices'] += indices_list[i]
+                self.members_dict[pointset[i].name].options['constrained_node_indices'] = list(set(self.members_dict[pointset[i].name].options['constrained_node_indices'])) 
+                self.members_dict[pointset[i].name].options['constrained_boundary_node_indices'] += indices_list[i]  
+                self.members_dict[pointset[i].name].options['constrained_boundary_node_indices'] = list(set(self.members_dict[pointset[i].name].options['constrained_boundary_node_indices']))                 
+            mapping = sps.csc_matrix(np.delete(mapping1.toarray(), self.members_dict[pointset1.name].options['constrained_boundary_node_indices'], 0))
+            self.members_dict[pointset1.name].options['mapping'] = mapping 
+
+            pointset0_node_indices = np.copy(np.array(self.members_dict[pointset0.name].options['node_indices']))
+            pointset0_indices = pointset0_node_indices[indices_list[0]]
+            pointset1_node_indices = np.copy(np.array(self.members_dict[pointset1.name].options['node_indices']))
+            pointset1_indices = pointset1_node_indices[indices_list[1]] 
+ 
+            new_list = []
+            old_list = []   
+            for mem in self.members_dict.values():
+                if mem.options['id'] != self.members_dict[pointset1.name].options['id']:
+                    node_indices = np.copy(np.array(mem.options['node_indices']))
+                    node_indices_old = np.copy(np.array(mem.options['node_indices']))
+                    for i in pointset1_indices:  
+                        node_indices[node_indices_old>i] -= 1         
+                        temp = node_indices[node_indices_old == i]
+                        if len(temp) ==1:
+                            new_list.append(temp[0])
+                            old_list.append(i)
+                        elif len(temp) ==0:
+                            pass
+                        else:
+                            print('Warning7')
+                            exit()                            
+                    mem.options['node_indices'] = list(node_indices)  
+            
+            starting_pointset1_index = 0
+            for mem in self.members_dict.values():               
+                if mem.options['id'] < self.members_dict[pointset1.name].options['id']:
+                    starting_pointset1_index += len(mem.options['mapping'].toarray())                 
+            pointset1_length = self.members_dict[pointset1.name].options['mapping'].shape[0]
+            j = 0
+            for i in range(num_points_u1*num_points_v1):
+                if i in indices_list[1]:                        
+                    pointset1_node_indices[i] = pointset0_indices[indices_list[1].index(i)]  
+                else: 
+                    pointset1_node_indices[i] = range(starting_pointset1_index, starting_pointset1_index + pointset1_length)[j]
+                    j+=1  
+            self.members_dict[pointset1.name].options['node_indices'] = list(pointset1_node_indices)
+
+            for mem in self.members_dict.values():
+                if mem.options['id'] > self.members_dict[pointset1.name].options['id']:
+                    node_indices = np.copy(np.array(mem.options['node_indices']))
+                    for i in new_list:
+                        node_indices[node_indices==i] = pointset0_indices[pointset1_indices.index(old_list[new_list.index(i)])]
+                    mem.options['node_indices'] = list(node_indices)   
+
+            # vd_points0 = vedo.Points(points0, r=25, c='red',alpha=0.5)  
+            # vd_points1 = vedo.Points(points1,r=15, c='green') # ,alpha=0.9
+            # vd_test = vedo.Plotter(axes=1)
+            # vd_test.show(vd_points0,vd_points1, 'Test', viewup="z", interactive=True) 
+            # exit()
         elif relationship == '+':
             print("Sorry! This has not been implemented yet!")                       
         elif relationship == 'T':
-            print('T', pointset1.name)   
+            print('T', pointset1.name) 
+            u0_v0_vec_ini = np.copy(u0_v0_vec)
             pointset1_points, indices_pointset1 = self.construct_constrained_triangulation(pointset1, num_points_u = num_points_u1, num_points_v = num_points_v1, constrained_edge_location = edge_location)        
             indices_pointset1 = list(indices_pointset1)  
             num_points = len(pointset1_points)            
@@ -274,10 +361,10 @@ class ShellMesh(Mesh):
                 dist = np.linalg.norm(u0_v0_vec - constrained_u0_v0_vec[i,:], axis = 1)
                 index = np.argmin(dist)                
                 pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
-
+                
                 if not (i == num_points - 1 or i==0):
-                    while pointset0_index in self.constrained_node_indices:# and np.min(dist) > 1e-6
-                        print('TESTindex',i, pointset0_index, np.min(dist))
+                    while index in self.members_dict[pointset0.name].options['constrained_node_indices']:
+                        #print('TESTindex',i, pointset0_index, np.min(dist))
                         dist[index] = 1000
                         index = np.argmin(dist)
                         pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
@@ -285,7 +372,7 @@ class ShellMesh(Mesh):
                     '''Special case for test_shellmesh_eVTOL_0.py
                     if i==num_points - 1 and 'rib5' in pointset1.name and 'rear' in pointset0.name:'''
                     if not self.pointset_ini_check:
-                        while pointset0_index in self.constrained_node_indices and index in self.members_dict[pointset0.name].options['constrained_node_indices'] and index not in self.members_dict[pointset0.name].options['constrained_boundary_node_indices']:
+                        while index in self.members_dict[pointset0.name].options['constrained_node_indices'] and index not in self.members_dict[pointset0.name].options['constrained_boundary_node_indices']:
                             print('XTTTESTindex',i, pointset0_index, np.min(dist), pointset0.name, pointset1.name)
                             dist[index] = 1000
                             index = np.argmin(dist)
@@ -296,37 +383,40 @@ class ShellMesh(Mesh):
                 pointset1_indices.append(self.members_dict[pointset1.name].options['node_indices'][indices_pointset1[i]])
                 u0_v0_vec[index,:] = 1000           
             
-            
-            for i in range(num_points):
-                u0_v0_vec[indices_pointset0[i],:] = constrained_u0_v0_vec[i,:]
-            self.members_dict[pointset0.name].options['u_v_vec'] = u0_v0_vec  
             constrained_edges = np.empty((0,2),dtype = int)
             for i in range(num_points):
                 if i != num_points - 1:
                     constrained_edges = np.append(constrained_edges, np.array([[indices_pointset0[i], indices_pointset0[i+1]]]).reshape(1,2), axis = 0)
             self.members_dict[pointset0.name].options['constrained_edges'] = np.append(self.members_dict[pointset0.name].options['constrained_edges'], constrained_edges, axis = 0)
-            self.members_dict[pointset0.name].options['constrained_node_indices'] += indices_pointset0
-            self.members_dict[pointset0.name].options['constrained_node_indices'] = list(set(self.members_dict[pointset0.name].options['constrained_node_indices']))
 
             pointset1_length = self.members_dict[pointset1.name].options['mapping'].shape[0]
             if pointset1 not in self.connected_pointset_list:
                 self.connected_pointset_list.append(pointset1)
                 
                 pointset1_check = 0
-                self.num_of_nodes += pointset1_length    
+                self.num_of_nodes += pointset1_length 
+                for i in range(num_points):
+                    u0_v0_vec[indices_pointset0[i],:] = constrained_u0_v0_vec[i,:]
+                self.members_dict[pointset0.name].options['u_v_vec'] = u0_v0_vec                   
             else:
                 pointset1_check = 1
                 indices_pointset1_reduced = []
                 pointset1_indices_reduced = []
                 indices_pointset0_reduced = []
                 pointset0_indices_reduced = []
-                for i in indices_pointset1:
+                for i in indices_pointset0:
                     if i not in self.members_dict[pointset0.name].options['constrained_node_indices']:
-                        indices_pointset1_reduced.append(i) 
-                        pointset1_indices_reduced.append(pointset1_indices[indices_pointset1.index(i)]) 
-                        indices_pointset0_reduced.append(indices_pointset0[indices_pointset1.index(i)])  
-                        pointset0_indices_reduced.append(pointset0_indices[indices_pointset1.index(i)])            
+                        indices_pointset1_reduced.append(indices_pointset1[indices_pointset0.index(i)]) 
+                        pointset1_indices_reduced.append(pointset1_indices[indices_pointset0.index(i)]) 
+                        indices_pointset0_reduced.append(i)  
+                        pointset0_indices_reduced.append(pointset0_indices[indices_pointset0.index(i)])            
                 self.num_of_nodes -= len(indices_pointset1_reduced)
+                for i in range(num_points):
+                    if indices_pointset0[i] in indices_pointset0_reduced:
+                        u0_v0_vec[indices_pointset0[i],:] = constrained_u0_v0_vec[i,:]
+                    else:
+                        u0_v0_vec[indices_pointset0[i],:] = u0_v0_vec_ini[indices_pointset0[i],:] 
+                self.members_dict[pointset0.name].options['u_v_vec'] = u0_v0_vec
 
                 new_list = []
                 old_list = []
@@ -347,9 +437,12 @@ class ShellMesh(Mesh):
                                 print('Warning7')
                                 exit()                            
                         mem.options['node_indices'] = list(node_indices)      
-
+            
+            self.members_dict[pointset0.name].options['constrained_node_indices'] += indices_pointset0
+            self.members_dict[pointset0.name].options['constrained_node_indices'] = list(set(self.members_dict[pointset0.name].options['constrained_node_indices']))
+            
             if not self.pointset_ini_check: 
-                basis0 = self.discritize_ctrl_pointset(pointset0, uv_vec = self.members_dict[pointset0.name].options['u_v_vec']) 
+                basis_matrix = self.discritize_ctrl_pointset(pointset0, uv_vec = self.members_dict[pointset0.name].options['u_v_vec']) 
                 constrained_indices_pointset0 = self.members_dict[pointset0.name].options['constrained_node_indices']     
                 mapping = self.members_dict[pointset0.name].options['mapping']
                 node_indices = np.array(self.members_dict[pointset0.name].options['node_indices']) 
@@ -358,7 +451,7 @@ class ShellMesh(Mesh):
                     if i in constrained_indices_pointset0 and node_indices[i]:
                         if node_indices[i] > starting_pointset0_index and node_indices[i] < starting_pointset0_index + len(mapping.toarray()):
                             if i in indices_pointset0_reduced: 
-                                mapping[j,:] = basis0.dot(pointset0.absolute_map)[i,:] 
+                                mapping[j,:] = basis_matrix.dot(pointset0.absolute_map)[i,:] 
                             j += 1                
                     else:
                         j += 1 
@@ -368,7 +461,6 @@ class ShellMesh(Mesh):
             for index in indices_pointset0:                
                 pointset0_index = self.members_dict[pointset0.name].options['node_indices'][index]
                 pointset0_indices.append(pointset0_index)
-            self.constrained_node_indices += pointset0_indices
 
             pointset1_node_indices = np.copy(np.array(self.members_dict[pointset1.name].options['node_indices']))                  
             constrained_indices_pointset1 = self.members_dict[pointset1.name].options['constrained_node_indices']
@@ -394,7 +486,8 @@ class ShellMesh(Mesh):
                         node_indices = np.copy(np.array(mem.options['node_indices']))
                         for i in new_list:
                             node_indices[node_indices==i] = pointset0_indices[pointset1_indices.index(old_list[new_list.index(i)])]
-                        mem.options['node_indices'] = list(node_indices) 
+                        mem.options['node_indices'] = list(node_indices)               
+
         else:
             print('Warning4')
         
@@ -420,12 +513,12 @@ class ShellMesh(Mesh):
             num_points_u_fitted * num_points_v_fitted, data, row_indices, col_indices,
                 )
         if pointset1 not in self.connected_pointset_list:
-            basis0 = sps.csc_matrix(
+            basis_matrix = sps.csc_matrix(
                 (data, (row_indices, col_indices)), 
                 shape=(num_points_u_fitted * num_points_v_fitted, num_control_points_u_fitted * num_control_points_v_fitted),
             )  
         else:
-            basis0 = self.discritize_ctrl_pointset(pointset1, uv_vec = self.members_dict[pointset1.name].options['u_v_vec'])
+            basis_matrix = self.discritize_ctrl_pointset(pointset1, uv_vec = self.members_dict[pointset1.name].options['u_v_vec'])
         indices_u0 = num_points_v * np.arange(num_points_u)  
         indices_v0 = np.arange(num_points_v)
         indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1
@@ -441,7 +534,7 @@ class ShellMesh(Mesh):
         else:
             print('Warning3')            
         
-        pts = basis0.dot(pointset1.physical_coordinates)  
+        pts = basis_matrix.dot(pointset1.physical_coordinates)  
         points = pts[indices, :]
             
         if pointset1 not in self.connected_pointset_list:
@@ -476,7 +569,7 @@ class ShellMesh(Mesh):
             self.members_dict[pointset1.name].options['constrained_boundary_node_indices'] += list(indices)   
             self.members_dict[pointset1.name].options['constrained_boundary_node_indices'] = list(set(self.members_dict[pointset1.name].options['constrained_boundary_node_indices']))  
                 
-        mapping = basis0.dot(pointset1.absolute_map) 
+        mapping = basis_matrix.dot(pointset1.absolute_map) 
         mapping = sps.csc_matrix(np.delete(mapping.toarray(), self.members_dict[pointset1.name].options['constrained_boundary_node_indices'], 0))
         self.members_dict[pointset1.name].options['mapping'] = mapping                 
 
@@ -544,11 +637,7 @@ class ShellMesh(Mesh):
             order_u, num_control_points_u, 0, u_vec, knot_vector_u, 
             order_v, num_control_points_v, 0, v_vec, knot_vector_v,
             num_points, data, row_indices, col_indices,
-        )
-        # basis0 = sps.csc_matrix(
-        #     (data, (row_indices, col_indices)), 
-        #     shape=(num_points, num_control_points_u * num_control_points_v),
-        # )           
+        )         
         uv_vec = np.append(u_vec.reshape((num_points,1)), v_vec.reshape((num_points,1)), axis=1)
         return uv_vec
  
@@ -571,22 +660,19 @@ class ShellMesh(Mesh):
             order_v_fitted, num_control_points_v_fitted, 0, surf_v_vec, knot_vector_v,
             len(uv_vec), data, row_indices, col_indices,
                 )
-        basis0 = sps.csc_matrix(
+        basis_matrix = sps.csc_matrix(
             (data, (row_indices, col_indices)), 
             shape=(len(uv_vec), num_control_points_u_fitted * num_control_points_v_fitted),
         )
-        return basis0  
+        return basis_matrix  
 
     def construct_whole_structure_mesh(self, plot = False):
-        constrained = []  
-        print()    
-        temp = []     
+        constrained = []   
         for memb in self.members_dict.values():
             if plot:# memb.options['id'] == 0 or memb.options['id'] == 1:#  
                 conn = memb.options['tri_connectivity'] 
                 inde = memb.options['node_indices']
                 cons = memb.options['constrained_node_indices']
-                temp.append(inde[3])
                 for i in range(len(conn)):
                     for j in range(3):                    
                         conn[i,j] = inde[conn[i,j]] 
@@ -595,34 +681,28 @@ class ShellMesh(Mesh):
  
                 self.tri_connectivity = np.append(self.tri_connectivity, conn, axis = 0)      
                 self.mapping = sps.csc_matrix(sps.vstack([self.mapping, memb.options['mapping']]))
-                # print(memb.options['id'], len(memb.options['mapping'].toarray()), cons)
-                # print()
-                #if memb.options['id'] == 0 or memb.options['id'] == 1:
                 constrained += cons
-                if memb.options['id'] == 1:
-                    inde_1 = inde
-                    point =  memb.options['mapping'].dot(self.total_cntrl_pts_vector)
-                    # print(point.shape)
-                    # print()
-                    # print('[ctrl_pts_primary_spar].options[node_indices]',self.members_dict['ctrl_pts_primary_spar'].options['node_indices'])
-                # 
-        # print()
-        print('len(constrained)',len(constrained),len(list(set(constrained))))
-        constrained = list(set(constrained))
-        print('self.constrained_node_indices',len(self.constrained_node_indices))
-        print('self.tri_connectivity', np.shape(self.tri_connectivity))
-        print()
-        print('[ctrl_pts_rib0].options[node_indices]',self.members_dict['ctrl_pts_rib0'].options['node_indices'])
-        test_points = self.mapping.dot(self.total_cntrl_pts_vector)
 
+                if memb.options['id'] == 15:
+                    
+                    mapping_test = memb.options['mapping']
+                    points_test = mapping_test.dot(self.total_cntrl_pts_vector)
+                    vd_points2 = vedo.Points(points_test, r=25, c='black')                      
+        
+        constrained = list(set(constrained))
+        total_points = self.mapping.dot(self.total_cntrl_pts_vector)
+        print('constrained', len(constrained))
+        print('self.tri_connectivity', self.tri_connectivity.shape)
+        print('total_points', total_points.shape)
         if plot:
-            mesh = vedo.Mesh([test_points, self.tri_connectivity], alpha=0.3)
+            mesh = vedo.Mesh([total_points, self.tri_connectivity], alpha=0.3)
             mesh.backColor().lineColor('green').lineWidth(3)
-            #vd_points1 = vedo.Points(test_points[[743, 2706, 2707],:], r=25, c='red') # 743, 2719, 2720
-            vd_points1 = vedo.Points(test_points[constrained,:], r=20, c='red',alpha = 0.7)  
-            #vd_points2 = vedo.Points(test_points[temp,:], r=25, c='black') #,vd_points2   , vd_points2 
+            #vd_points1 = vedo.Points(point, r=20, c='red',alpha = 0.7) # 743, 2719, 2720
+            vd_points1 = vedo.Points(total_points[constrained,:], r=20, c='red',alpha = 0.7)  
+            temp = [0]#, 3626, 3624, 3621, 3620, 3619, 3618, 3617, 3577, 3616, 3576, 3615, 3575, 3614, 3613
+            vd_points2 = vedo.Points(total_points[temp,:], r=25, c='black') #,vd_points2   , vd_points2 
             vd_test = vedo.Plotter(axes=1)
-            vd_test.show(mesh, 'Test', vd_points1, viewup="z", interactive=True) 
+            vd_test.show(mesh, 'Test', vd_points1, vd_points2, viewup="z", interactive=True) 
 
     def pymeshopt(self):
         fixedvert = np.array([])

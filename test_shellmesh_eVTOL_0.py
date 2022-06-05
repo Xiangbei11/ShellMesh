@@ -63,10 +63,14 @@ shell_mesh.identify_intersection_list(geo, intersection_list_upper_wing)
 #shell_mesh.identify_intersection_list(geo, [intersection_list_primary_spar[0], intersection_list_primary_spar[1], intersection_list_primary_spar[2], intersection_list_primary_spar[3], intersection_list_primary_spar[4], intersection_list_primary_spar[5], intersection_list_primary_spar[6]], plot = True)#
 shell_mesh.identify_intersection_list(geo, intersection_list_primary_spar)
 shell_mesh.identify_intersection_list(geo, intersection_list_rear_spar)
-#shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
-shell_mesh.identify_intersection_list(geo, [intersection_list_lower_wing[0], intersection_list_lower_wing[1]])
+
 #shell_mesh.identify_intersection_list(geo, [intersection_list_lower_wing[0], intersection_list_lower_wing[1],intersection_list_lower_wing[2]])
-#shell_mesh.identify_intersection_list(geo, [intersection_list_rear_spar[0], intersection_list_rear_spar[1], intersection_list_rear_spar[2], intersection_list_rear_spar[3], intersection_list_rear_spar[4], intersection_list_rear_spar[5]], plot = True)
+#shell_mesh.identify_intersection_list(geo, [intersection_list_lower_wing[0], intersection_list_lower_wing[1],intersection_list_lower_wing[2],intersection_list_lower_wing[3]])#,plot = True
+shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
+num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 67, 40, 67, 40
+intersection_list_wing = [[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-'], [147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u1','u0'],'-']]
+shell_mesh.identify_intersection_list(geo,[[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-']])
+#shell_mesh.identify_intersection_list(geo,intersection_list_wing)
 shell_mesh.construct_whole_structure_mesh(plot = True)
 exit()
 
