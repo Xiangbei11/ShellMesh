@@ -8,9 +8,9 @@ import os
 cwd = os.getcwd() 
 CAD_file_path = cwd + '/lsdo_kit/lsdo_kit/design/design_geometry/examples'
 os.chdir(CAD_file_path)
-from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh import *
+from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh_0 import *
 
-from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh import geo, structures_mesh, members_ctrl_pointset_list
+from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh_0 import geo, structures_mesh, members_ctrl_pointset_list
 
 os.chdir(cwd)
 from shellmesh import ShellMesh
@@ -69,8 +69,8 @@ shell_mesh.identify_intersection_list(geo, intersection_list_rear_spar)
 shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
 num_points_u0, num_points_v0, num_points_u1, num_points_v1 = 67, 40, 67, 40
 intersection_list_wing = [[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-'], [147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u1','u0'],'-']]
-shell_mesh.identify_intersection_list(geo,[[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-']])
-#shell_mesh.identify_intersection_list(geo,intersection_list_wing)
+#shell_mesh.identify_intersection_list(geo,[[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-']])
+shell_mesh.identify_intersection_list(geo,intersection_list_wing)
 shell_mesh.construct_whole_structure_mesh(plot = True)
 exit()
 

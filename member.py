@@ -15,6 +15,7 @@ class Member(object):
             with shape (2,3)/(2, num_points, 3)
         '''
         self.options = OptionsDictionary()
+        self.options.declare('name',types=str)
         self.options.declare('id', types=int)
         self.options.declare('node_indices', types=list, default=[])
         self.options.declare('tri_connectivity', types=np.ndarray)
@@ -24,7 +25,7 @@ class Member(object):
         self.options.declare('constrained_edges', types=np.ndarray)
         self.options.declare('constrained_boundary_node_indices', types=list, default=[])
         self.options.update(kwargs)        
-        # self.declare('name',types=str,default='Not defined')
+        # 
         # self.declare('curves',types=np.ndarray,default=np.array([0,0,0,0]))
         # 
         # self.declare('dirts',types=np.ndarray,default=np.array([]))
