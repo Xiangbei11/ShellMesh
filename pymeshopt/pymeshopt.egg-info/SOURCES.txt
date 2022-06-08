@@ -1,0 +1,8 @@
+cmeshopt.cpp
+pymeshopt.pyx
+setup.py
+pymeshopt.egg-info/PKG-INFO
+pymeshopt.egg-info/SOURCES.txt
+pymeshopt.egg-info/dependency_links.txt
+pymeshopt.egg-info/requires.txt
+pymeshopt.egg-info/top_level.txt

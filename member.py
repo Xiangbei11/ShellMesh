@@ -24,6 +24,9 @@ class Member(object):
         self.options.declare('mapping', types=sps.csc.csc_matrix)
         self.options.declare('constrained_edges', types=np.ndarray)
         self.options.declare('constrained_boundary_node_indices', types=list, default=[])
+        self.options.declare('coordinates', types=np.ndarray)
+        self.options.declare('opt_coordinates', types=np.ndarray)
+        self.options.declare('opt_connectivity', types=np.ndarray)
         self.options.update(kwargs)        
         # 
         # self.declare('curves',types=np.ndarray,default=np.array([0,0,0,0]))
