@@ -66,7 +66,7 @@ shell_mesh.identify_intersection_list(geo, intersection_list_primary_spar)
 shell_mesh.identify_intersection_list(geo, intersection_list_rear_spar)
 shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
 shell_mesh.identify_intersection_list(geo,intersection_list_wing)
-shell_mesh.construct_whole_structure_mesh()#plot = True
+shell_mesh.construct_whole_structure_mesh(plot = True)#plot = True
 #shell_mesh.save_tri_vtk('CAD_test_eVTOL_shellmesh_1', shell_mesh.total_points, shell_mesh.tri_connectivity)
 
 '''Just test the path of gurobi licence file'''

@@ -1,28 +1,18 @@
 import sys
 sys.path.insert(0,'/Users/Sansara/Public/Code/Geomesh/ShellMesh/pymeshopt')
-import pymeshopt 
+import pymeshopt
+
 import numpy as np
 import scipy
-from scipy.sparse import csc_matrix
+from scipy.sparse import csc_matrix, coo_matrix, vstack, hstack
 from scipy.optimize import linprog
-import matplotlib.pyplot as plt
-import sys, vtk
-from mpl_toolkits import mplot3d
-import time
+
+
 import gurobipy as gp
 from gurobipy import GRB
 from pyoctree import pyoctree as ot
-from openmdao.api import Problem, ScipyOptimizeDriver,ExecComp, IndepVarComp, ExplicitComponent, OptionsDictionary, Group, pyOptSparseDriver
-from scipy.sparse import coo_matrix
-# from verticescomp import VerticesComp
-# from projectioncomp import ProjectionComp
-# from energycomp import EnergyComp
-# from regularizationcomp import RegularizationComp
-# from costcomp import CostComp
-# from dvertcomp import DvertComp
+
 from stl import mesh
-import os.path
-from scipy.sparse import coo_matrix, vstack, hstack, csr_matrix
 import meshio
 
 class meshopt(object):
@@ -63,39 +53,38 @@ class meshopt(object):
                 self.vertexCoords = self.qpmanual()
             elif i == 3:
                 self.fullyquad()
-        if self.plot:
-            plt.show()
 
     # splitting optimization
     def splitting(self):
-        '''
-        filename : (string) file name to save the plotted figure
-        '''
         meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3) 
-        optprep = meshopt.computenormal()
-        normal = optprep.normal# normal vector on each vertex
-        cs = meshopt.computecs()# local coordinate system on each vertex
-        # print out normals to check if they are valid
-        print('normal',np.argwhere(np.isnan(normal)))
-        print('normal',np.isnan(np.min(normal)))
-        print('cs',np.argwhere(np.isnan(cs)))
+        # # optprep = meshopt.computenormal()
+        # # normal = optprep.normal# normal vector on each vertex
+        # # cs = meshopt.computecs()# local coordinate system on each vertex
+        # # # print out normals to check if they are valid
+        # # print('normal',np.argwhere(np.isnan(normal)))
+        # # print('normal',np.isnan(np.min(normal)))
+        # # print('cs',np.argwhere(np.isnan(cs)))
         print('splitting setup...')
         vertexCoords = self.vertexCoords
-        fixed = vertexCoords[self.fixedvert]
+        # #fixed = vertexCoords[self.fixedvert]
         trilist = self.trilist
         quadlist = self.quadlist
         w1 = self.w1
         w2 = self.w2
         w3 = self.w3
+        # 
         meshopt = pymeshopt.Pymeshopt(vertexCoords,trilist,quadlist,w1,w2,w3)
         matrix = meshopt.creatematrix()# coefficient matrix
+        
         nel = matrix.shape[0]
+        print(len(trilist),len(quadlist))
         print('nel',nel)
+        #exit()
         C = matrix.flatten()
         num_poly = len(trilist)+len(quadlist)
-        num_tri = len(trilist)
-        num_quad = len(quadlist)
-        # create linear constraint
+        # # num_tri = len(trilist)
+        # # num_quad = len(quadlist)
+        # # create linear constraint
         data = np.ones((11*nel,1)).flatten()
         row = np.einsum('i,j->ij',np.arange(nel),np.ones(11)).flatten()
         col = np.arange(len(data))
@@ -113,7 +102,11 @@ class meshopt(object):
         print('bound',bound)
         print('splitting optimizing...')
         opt = gp.Model("split")
+        print(np.shape(matrix))
+        print(np.shape(C))
         x = opt.addMVar(shape=len(C),lb=bound[0,:], ub=bound[1,:], vtype=GRB.BINARY, name="x")
+        print(np.shape(x))
+        #exit()
         opt.setObjective(C @ x, GRB.MINIMIZE)
         opt.addMConstrs(A,x,'=',B)
         a = np.eye(len(C))
@@ -123,78 +116,11 @@ class meshopt(object):
         a=(np.argwhere(x.X > 0.5).flatten()-np.linspace(0,11*(nel-1),nel)).astype(int)
         output = meshopt.splitupdatemesh(a.astype(np.int32),self.fixedvert)
         vertexCoords = output.vertlist
-        splitcoord = output.splitcoord
+        #splitcoord = output.splitcoord
         trilist = output.trilist
         quadlist = output.quadlist
         self.fixedvert = output.fixedvert.astype(np.int32)
         print('splitting computenormal...')
-        if self.plot:
-            # plt.figure()
-
-            # for i in range(len(trilist)):
-            #     coord = np.concatenate((vertexCoords[trilist[i,:]],np.array([vertexCoords[trilist[i,0]]])))
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'b')
-
-            # for i in range(len(quadlist)):
-            #     coord = np.concatenate((vertexCoords[quadlist[i,:]],np.array([vertexCoords[quadlist[i,0]]])))
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'b')
-            
-            # for i in range(int(len(splitcoord)/2)):
-            #     coord = splitcoord[i*2:i*2+2,:]
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,color='r')
-            # plt.plot(fixed[:,0],fixed[:,1],'k-o')
-            # plt.axis('equal')
-
-            # plt.axis('off')
-            # plt.savefig("splitting.pdf", bbox_inches='tight')
-            print('splitting plotting...')
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
-            num_tri = len(trilist)
-            num_quad = len(quadlist)
-            for i in range(num_tri):
-                coord = np.concatenate((vertexCoords[trilist[i]],np.array([vertexCoords[trilist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-            for i in range(num_quad):
-                coord = np.concatenate((vertexCoords[quadlist[i,:]],np.array([vertexCoords[quadlist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-            for i in range(int(len(splitcoord)/2)):
-                coord = splitcoord[i*2:i*2+2,:]
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='r')
-            for i in range(len(vertexCoords)):
-                coord = vertexCoords[i,:]
-                x1 = coord[0]
-                y1 = coord[1]
-                z1 = coord[2]
-                coord = normal[i]
-                x2 = coord[0]
-                y2 = coord[1]
-                z2 = coord[2]
-                # ax.quiver(x1,y1,z1,x2,y2,z2)
-            print('---------------------------------',fixed.shape[0])
-            ax.plot(fixed[:,0],fixed[:,1],fixed[:,2],'k-o')
-            X = vertexCoords[:,0]
-            Y = vertexCoords[:,1]
-            Z = vertexCoords[:,2]
-            ax.set_xlabel('X Label')
-            ax.set_ylabel('Y Label')
-            ax.set_zlabel('Z Label')
-            # Create cubic bounding box to simulate equal aspect ratio
-            max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
-            Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
-            Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
-            Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
-            # Comment or uncomment following both lines to test the fake bounding box:
-            for xb, yb, zb in zip(Xb, Yb, Zb):
-                ax.plot([xb], [yb], [zb], 'w')
-            # plt.savefig(filename)
-            print('splitting plot finish')
         vertexCoords=vertexCoords.astype(np.float32)
         trilist=trilist.astype(np.int32)
         quadlist=quadlist.astype(np.int32)
@@ -237,7 +163,7 @@ class meshopt(object):
         b_ub = np.ones(len(trilist))
         print('creatint bound...')
         print()
-        print('self.fixedvert',self.fixedvert)
+        #print('self.fixedvert',self.fixedvert)
         print()
         bound = meshopt.createboundsmerge(self.fixedvert)
         print('end bound...')
@@ -340,61 +266,7 @@ class meshopt(object):
                 print('it takes '+str(i)+' iterations to finsh qp')
                 break
 
-        fixed = vertlist1[self.fixedvert]
-        if self.plot:
-            # plt.figure()
-            # for i in range(len(edges)):
-            #     coord = self.vertexCoords[edges[i]]
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'b')
-
-            # for i in range(len(self.trilist)):
-            #     coord = np.concatenate((vertlist1[self.trilist[i,:]],np.array([vertlist1[self.trilist[i,0]]])))
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'r')
-
-            # for i in range(len(self.quadlist)):
-            #     coord = np.concatenate((vertlist1[self.quadlist[i,:]],np.array([vertlist1[self.quadlist[i,0]]])))
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'r')
-            # plt.plot(fixed[:,0],fixed[:,1],'k-o')
-            # plt.axis('equal')
-
-            # plt.axis('off')
-            # plt.savefig("smoothing.pdf", bbox_inches='tight')
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
-            for i in range(len(edges)):
-                coord = self.vertexCoords[edges[i]]
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='k')
-            for i in range(len(self.trilist)):
-                coord = np.concatenate((vertlist1[self.trilist[i,:]],np.array([vertlist1[self.trilist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-
-            for i in range(len(self.quadlist)):
-                coord = np.concatenate((vertlist1[self.quadlist[i,:]],np.array([vertlist1[self.quadlist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-            ax.plot(fixed[:,0],fixed[:,1],fixed[:,2],'k-o')
-
-            # plt.savefig('preliminary_results/optimization.png')
-            X = self.vertexCoords[:,0]
-            Y = self.vertexCoords[:,1]
-            Z = self.vertexCoords[:,2]
-            ax.set_xlabel('X Label')
-            ax.set_ylabel('Y Label')
-            ax.set_zlabel('Z Label')
-            # Create cubic bounding box to simulate equal aspect ratio
-            max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
-            Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
-            Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
-            Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
-            # Comment or uncomment following both lines to test the fake bounding box:
-            for xb, yb, zb in zip(Xb, Yb, Zb):
-                ax.plot([xb], [yb], [zb], 'w')
-            
+        fixed = vertlist1[self.fixedvert]            
         return vertlist1       
 
     # convert to fully quad mesh
@@ -411,54 +283,6 @@ class meshopt(object):
         trilist = self.trilist
         quadlist = self.quadlist
         fixed = self.vertexCoords[self.fixedvert]
-        if self.plot:
-            # plt.figure()
-            # # for i in range(len(edges)):
-            # #     coord = self.vertexCoords[edges[i]]
-            # #     x, y, z = zip(*coord)
-            # #     plt.plot(x,y,'b')
-
-            # # for i in range(len(self.trilist)):
-            # #     coord = np.concatenate((vertlist1[self.trilist[i,:]],np.array([vertlist1[self.trilist[i,0]]])))
-            # #     x, y, z = zip(*coord)
-            # #     plt.plot(x,y,'r')
-
-            # for i in range(len(quadlist)):
-            #     coord = np.concatenate((vertexCoords[quadlist[i,:]],np.array([vertexCoords[quadlist[i,0]]])))
-            #     x, y, z = zip(*coord)
-            #     plt.plot(x,y,'b')
-            # plt.plot(fixed[:,0],fixed[:,1],'k-o')
-            # plt.axis('equal')
-
-            # plt.axis('off')
-            # plt.savefig("fully quad.pdf", bbox_inches='tight')
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
-            for i in range(len(trilist)):
-                coord = np.concatenate((vertexCoords[trilist[i]],np.array([vertexCoords[trilist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-
-            for i in range(len(quadlist)):
-                coord = np.concatenate((vertexCoords[quadlist[i,:]],np.array([vertexCoords[quadlist[i,0]]])))
-                x, y, z = zip(*coord)
-                ax.plot(x,y,z,color='b')
-            ax.plot(fixed[:,0],fixed[:,1],fixed[:,2],'k-o')
-            # plt.savefig('preliminary_results/optimization.png')
-            X = vertexCoords[:,0]
-            Y = vertexCoords[:,1]
-            Z = vertexCoords[:,2]
-            ax.set_xlabel('X Label')
-            ax.set_ylabel('Y Label')
-            ax.set_zlabel('Z Label')
-            # Create cubic bounding box to simulate equal aspect ratio
-            max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max()
-            Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(X.max()+X.min())
-            Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(Y.max()+Y.min())
-            Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(Z.max()+Z.min())
-            # Comment or uncomment following both lines to test the fake bounding box:
-            for xb, yb, zb in zip(Xb, Yb, Zb):
-                ax.plot([xb], [yb], [zb], 'w')
         print('fully quad mesh generated')
 
     # save as stl (not used since stl only contains triangles)

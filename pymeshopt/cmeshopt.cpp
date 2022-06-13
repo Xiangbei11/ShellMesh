@@ -3,6 +3,7 @@
 
 opt::opt(vector<vector<double> > _vertexCoords, vector<vector<int> > _triConnectivity, vector<vector<int> > _quadConnectivity, double _w1, double _w2, double _w3)
 {
+    cout<<"PPP"<<p<<"\n";
     vertexCoords = _vertexCoords;
     triConnectivity = _triConnectivity;
     quadConnectivity = _quadConnectivity;
@@ -15,6 +16,7 @@ opt::~opt() {}
 // bulid up coefficient matrix for splitting optimization
 vector<vector<double> > opt::buildupmatrix()
 {   
+    
     int i, j;
     int num_poly = triConnectivity.size() + quadConnectivity.size(); 
     vector<double> init(11,0.0);
@@ -22,12 +24,14 @@ vector<vector<double> > opt::buildupmatrix()
     vector<double> verinit(3,0.0);
     vector<vector<double> > trivertices(3,verinit);
     vector<vector<double> > quadvertices(4,verinit);
+    
     // loop through every triangle and quad
     for (i=0;i<(int) triConnectivity.size();i++){
         trivertices[0] = vertexCoords[triConnectivity[i][0]];
         trivertices[1] = vertexCoords[triConnectivity[i][1]];
         trivertices[2] = vertexCoords[triConnectivity[i][2]];
-        vector<double> abc = splittriangle(trivertices);
+        
+        vector<double> abc = splittriangle(trivertices);//Xb: can be comment
         matrix[i] = splittriangle(trivertices);
     }
     for (j=0;j<(int) quadConnectivity.size();j++){
@@ -44,6 +48,7 @@ vector<vector<double> > opt::buildupmatrix()
 // 7 splitting options for triangles and their corresponding energy
 vector<double> opt::splittriangle(vector<vector<double> > vertices)
 {   
+    cout<<"PPPPP "<<p<<"\n";
     // six vectors starting from each vertice to the other two
     vector<double> e01 = vectSubtract(vertices[1],vertices[0]);
     vector<double> e02 = vectSubtract(vertices[2],vertices[0]);
@@ -64,6 +69,9 @@ vector<double> opt::splittriangle(vector<vector<double> > vertices)
     vector<double> v2m12 = vectSubtract(m12,vertices[2]);
     vector<double> m12v2 = vectSubtract(vertices[2],m12);
     double opt0Lavg = (vectNorm(e02)+vectNorm(e01)+vectNorm(v0m12)+vectNorm(v1m12)+vectNorm(v2m12))/5;
+
+     
+    //double p = 2.0;
     options[0] = w1*(pow(angleRatio(e02,v0m12,theta0),p) + pow(angleRatio(e01,v0m12,theta0),p)
                + pow(angleRatio(e10,v1m12,theta0),p) + pow(angleRatio(e20,v2m12,theta0),p)
                + pow(angleRatio(m12v2,m12v0,theta0),p) + pow(angleRatio(m12v1,m12v0,theta0),p))/6
@@ -140,7 +148,7 @@ vector<double> opt::splittriangle(vector<vector<double> > vertices)
 vector<double> opt::splitquad(vector<vector<double> > vertices)
 {
     // p-norm constant
-    double p = 2.0;
+    // double p = 2.0;
     // eight vectors starting from each vertice to the adjacent two vertices
     vector<double> e01 = vectSubtract(vertices[1],vertices[0]);
     vector<double> e03 = vectSubtract(vertices[3],vertices[0]);
@@ -909,7 +917,7 @@ FullyQuad opt::fullyquadmesh(vector<int> fixed)
     return fullyquad;
 }
 
-// calculate the normal vector of each vertex and measure the curvature to determine the weight for smoothing optimization
+// Calculate the normal vector of each vertex and measure the curvature to determine the weight for smoothing optimization
 // this function should be robust, the reason of failure may comes from invalid mesh
 OptPrep opt::computenormal()
 {

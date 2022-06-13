@@ -737,23 +737,33 @@ class ShellMesh(Mesh):
         constrained = []   
         print()
         for memb in self.members_dict.values():
+            #print(memb.options['id'], len(inde))
+            if memb.options['id'] == 1 or memb.options['id'] == 2:
+                num_u_spar = 56
+                num_v_spar = 4
+                indices_v0 = np.arange(num_v_spar)
+                indices_v1 = np.arange(num_v_spar)+ (num_u_spar*num_v_spar) - num_v_spar  
+                indices_list = [indices_v0, indices_v1]
+                for indices in indices_list:
+                    memb.options['constrained_node_indices'] += list(indices)
+                    memb.options['constrained_boundary_node_indices'] += list(indices)   
+                    memb.options['constrained_boundary_node_indices'] = list(set(memb.options['constrained_boundary_node_indices']))                 
             conn = np.copy(memb.options['tri_connectivity']) 
             inde = np.copy(memb.options['node_indices'])
             cons = list(np.copy(memb.options['constrained_node_indices']))
-            #print(memb.options['id'], len(inde))
             
-            if memb.options['id'] == 5:
-                # print(inde[0])
-                # print(cons)
-                # print(inde[cons])
-                inde[0]= 404
-                memb.options['node_indices'] = list(inde)
-            if memb.options['id'] == 11:
-                # print(inde[0])
-                # print(cons)
-                # print(inde[cons])                
-                inde[0]= 1095
-                memb.options['node_indices'] = list(inde)
+            # # # if memb.options['id'] == 5:
+            # # #     # print(inde[0])
+            # # #     # print(cons)
+            # # #     # print(inde[cons])
+            # # #     inde[0]= 404
+            # # #     memb.options['node_indices'] = list(inde)
+            # # # if memb.options['id'] == 11:
+            # # #     # print(inde[0])
+            # # #     # print(cons)
+            # # #     # print(inde[cons])                
+            # # #     inde[0]= 1095
+            # # #     memb.options['node_indices'] = list(inde)
 
             for i in range(len(conn)):
                 for j in range(3):                    
@@ -812,14 +822,15 @@ class ShellMesh(Mesh):
             vertexCoords = np.copy(memb.options['coordinates'].astype('float32'))
             trilist = np.copy(memb.options['tri_connectivity'])
             fixedvert = np.copy(np.array(memb.options['constrained_node_indices'], dtype='int32'))
-            itr=[0,1,2,1,2,3]                              
-            m = meshopt(vertexCoords,trilist,quadlist, fixedvert=fixedvert ,itr=itr, w1=1.,w2=1.,w3=1., plot = 0)#,w4 =1.
-            m.optimization()
-            m.saveasvtk('CAD/'+memb.options['name']) 
-            memb.options['opt_coordinates'] = m.vertexCoords
-            memb.options['opt_connectivity'] = m.quadlist
+            if memb.options['id'] ==3:
+                itr=[0,1,2,3]                              
+                m = meshopt(vertexCoords,trilist,quadlist, fixedvert=fixedvert ,itr=itr, w1=1.,w2=1.,w3=1., plot = 0)#,w4 =1.
+                m.optimization()
+                m.saveasvtk('CAD/'+memb.options['name']) 
+                memb.options['opt_coordinates'] = m.vertexCoords
+                memb.options['opt_connectivity'] = m.quadlist
 
-            if plot:#
+            if True:#plot:#
                 mesh = vedo.Mesh([vertexCoords, trilist], alpha=0.3)
                 mesh.backColor().lineColor('green').lineWidth(3)
                 vd_points1 = vedo.Points(vertexCoords[fixedvert,:], r=20, c='red',alpha = 0.7)  

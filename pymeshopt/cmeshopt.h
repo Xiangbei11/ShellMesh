@@ -119,7 +119,7 @@ public:
     double w1;
     double w2;
     double w3;
-    const double p = 2.0;
+    const double p = 2.0; // p-norm constant
     const double theta0 = 60.0;// reference angle from equilateral triangles
     const double theta1 = 90.0;// reference angle from square
     opt(vector<vector<double> > _vertexCoords, vector<vector<int> > _triConnectivity, vector<vector<int> > _quadConnectivity, double w1, double w2, double w3);
