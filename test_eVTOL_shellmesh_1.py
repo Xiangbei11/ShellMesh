@@ -26,7 +26,8 @@ for i, pointset in enumerate(OML_pointset_list):
 
 merged_OML_list = [[142, 144, 'OML_upper_wing'],
                 [141, 143, 'OML_lower_wing'],] 
-OML_ctrl_pointset_list  = shell_mesh.merge_OML(geo, merged_OML_list) 
+OML_ctrl_pointset_list = shell_mesh.merge_OML(geo, [merged_OML_list[0]]) 
+OML_ctrl_pointset_list.append(shell_mesh.merge_OML(geo, [merged_OML_list[1]])[0]) 
 vd_points2 = []
 print()
 for pointset in OML_ctrl_pointset_list:
@@ -46,6 +47,7 @@ intersection_list_upper_wing = []
 intersection_list_lower_wing = []
 intersection_list_primary_spar = []
 intersection_list_rear_spar = []
+
 for pointset in members_ctrl_pointset_list:
     if 'spar' in pointset.name:
         num_points_u0, num_points_v0, num_points_u1, num_points_v1 = num_u_wing, num_v_wing, num_u_spar, num_v_spar #65, 40, 56, 4
@@ -61,6 +63,7 @@ for pointset in members_ctrl_pointset_list:
 num_points_u0, num_points_v0, num_points_u1, num_points_v1 = num_u_wing, num_v_wing, num_u_wing, num_v_wing
 intersection_list_wing = [[147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u0','u1'],'-'], [147,150,num_points_u0,num_points_v0,num_points_u1,num_points_v1,['u1','u0'],'-']]
 
+
 shell_mesh.identify_intersection_list(geo, intersection_list_upper_wing)
 shell_mesh.identify_intersection_list(geo, intersection_list_primary_spar)
 shell_mesh.identify_intersection_list(geo, intersection_list_rear_spar)
@@ -68,7 +71,7 @@ shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
 shell_mesh.identify_intersection_list(geo,intersection_list_wing)
 shell_mesh.construct_whole_structure_mesh(plot = True)#plot = True
 #shell_mesh.save_tri_vtk('CAD_test_eVTOL_shellmesh_1', shell_mesh.total_points, shell_mesh.tri_connectivity)
-
+exit()
 '''Just test the path of gurobi licence file'''
 import gurobipy as gp
 test = gp.Model('test') # export GRB_LICENSE_FILE=/Users/Sansara/Public/Code/A/gurobi.lic

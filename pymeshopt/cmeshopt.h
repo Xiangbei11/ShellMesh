@@ -126,6 +126,8 @@ public:
     ~opt();
     vector<double> splittriangle(vector<vector<double> > vertices);//, double w1, double w2);
     vector<double> splitquad(vector<vector<double> > vertices);//, double w1, double w2);
+    vector<double> calculate_aspect_ratio();
+    vector<vector<double> > calculate_internal_angles();
     vector<vector<double> > buildupmatrix();
     vector<vector<double> > buildbounds(vector<int> fixedvert);
     vector<vector<int> > countedges();

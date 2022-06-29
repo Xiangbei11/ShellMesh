@@ -83,18 +83,20 @@ class DesignGeometry:
         if plot == True: #There are only 239 colors in vedo.colors.colors dictionary. If number of bspline surfaces is larger than 238*2, reduce the index of the color agian
             vps_ini = []
             vps = []
-            for i in range(len(self.input_bspline_entity_dict.values())):        
-                if i > 238:
-                    color = list(colors.colors.values())[i-239]#239
-                else:
-                    color = list(colors.colors.values())[i]
-                surf_ini = list(self.initial_input_bspline_entity_dict.values())[i] 
-                # if not (surf_ini.name =='Wing, 0, 8'):
-                #     continue
-                # print(surf_ini.name)
-                vps_ini.append(Points(surf_ini.control_points, r=8, c = color))
-                surf = list(self.input_bspline_entity_dict.values())[i]
-                vps.append(Points(surf.control_points, r=8, c = color))
+            for i in range(len(self.input_bspline_entity_dict.values())):  
+                if i < 10 or i > 57:# 
+                    pass
+                else: 
+                    print(i)     
+                    if i > 238:
+                        color = list(colors.colors.values())[i-239]#239
+                    else:
+                        color = list(colors.colors.values())[i]
+                    surf_ini = list(self.initial_input_bspline_entity_dict.values())[i] 
+                    vps_ini.append(Points(surf_ini.control_points, r=8, c = color))
+                    surf = list(self.input_bspline_entity_dict.values())[i]
+                    vps.append(Points(surf.control_points, r=8, c = color))
+            print()
             vp_init_out = Plotter()
             vp_init_out.show(vps_ini, 'Initial control points', axes=1, viewup="z", interactive = False)
             vp_init = Plotter()
@@ -710,9 +712,52 @@ class DesignGeometry:
 
                 a = np.matmul(basis0.toarray().T, basis0.toarray())
                 if np.linalg.det(a) == 0:
-                    cps_fitted,_,_,_ = np.linalg.lstsq(a, np.matmul(basis0.toarray().T, entity_points_be_fitted), rcond=None)
                     print('TODO: lstsq')
+                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0)                      
+                    cps_fitted = entity_points_be_fitted                        
+                    ind = np.lexsort((cps_fitted[:,0],cps_fitted[:,1],cps_fitted[:,2])) 
+                    print(ind.shape)
+                    points_sorted = cps_fitted[ind]
+
+                    order_u_fitted = 4
+                    order_v_fitted = 4
+                    num_control_points_u_fitted = 6
+                    num_control_points_v_fitted = 180
+                    num_points_u_fitted = component_shape[1]
+                    num_points_v_fitted = component_shape[0]
+
+                    nnz = num_points_u_fitted * num_points_v_fitted * order_u_fitted * order_v_fitted
+                    data = np.zeros(nnz)
+                    row_indices = np.zeros(nnz, np.int32)
+                    col_indices = np.zeros(nnz, np.int32)
+                    u_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u_fitted), np.ones(num_points_v_fitted)).flatten()
+                    v_vec = np.einsum('i,j->ij', np.ones(num_points_u_fitted), np.linspace(0., 1., num_points_v_fitted)).flatten()
+                    knot_vector_u = np.zeros(num_control_points_u_fitted+order_u_fitted)
+                    knot_vector_v = np.zeros(num_control_points_v_fitted+order_v_fitted)
+                    get_open_uniform(order_u_fitted, num_control_points_u_fitted, knot_vector_u)
+                    get_open_uniform(order_v_fitted, num_control_points_v_fitted, knot_vector_v)
+                    get_basis_surface_matrix(
+                        order_u_fitted, num_control_points_u_fitted, 0, u_vec, knot_vector_u,
+                        order_v_fitted, num_control_points_v_fitted, 0, v_vec, knot_vector_v,
+                        num_points_u_fitted * num_points_v_fitted, data, row_indices, col_indices,
+                    )
+                    basis0 = sps.csc_matrix(
+                        (data, (row_indices, col_indices)), 
+                        shape=(num_points_u_fitted * num_points_v_fitted, num_control_points_u_fitted * num_control_points_v_fitted),
+                    )
+
+                    a = np.matmul(basis0.toarray().T, basis0.toarray())
+                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0)
+                    print('num_control_points_u_fitted', num_control_points_u_fitted, 'num_control_points_v_fitted',num_control_points_v_fitted, 'num_points_u_fitted',num_points_u_fitted, 'num_points_v_fitted',num_points_v_fitted)
+                    cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, points_sorted))  
+                    vp_points0 = vedo.Points(points_sorted, r=10, c='red',alpha=0.8)#cps_fitted[vector_indices,:]
+                    vp_points1 = vedo.Points(cps_fitted, r=15, c='green',alpha=0.3)
+                    vp_test = Plotter(axes=1)
+                    vp_test.show(vp_points0,vp_points1, 'Test', viewup="z", interactive=True)  
+                    exit()                      
+                    #relative_map = sps.csc_matrix(relative_map)
                 else: 
+                    #print('num_control_points_u_fitted', num_control_points_u_fitted, 'num_control_points_v_fitted',num_control_points_v_fitted, 'num_points_u_fitted',num_points_u_fitted, 'num_points_v_fitted',num_points_v_fitted)
                     cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, entity_points_be_fitted))  
                     relative_map = np.matmul(np.linalg.inv(a),basis0.toarray().T)
                 relative_map = sps.csc_matrix(relative_map)
@@ -735,11 +780,11 @@ class DesignGeometry:
                 self.current_pointset_pts += np.cumprod(pointset.shape)[-2]  
                 output_pointset_list.append(pointset)  
 
-                if plot:
+                if plot:#
                     self.assemble(pointset = pointset)
                     points = self.evaluate(pointset = pointset)
                     #points = relative_map.dot(entity_points_be_fitted)
-                    vp_points0 = vedo.Points(points, r=10, c='red',alpha=0.8)
+                    vp_points0 = vedo.Points(entity_points_be_fitted, r=10, c='red',alpha=0.8)
                     vp_points1 = vedo.Points(cps_fitted, r=15, c='green',alpha=0.3)
                     vp_test = Plotter(axes=1)
                     vp_test.show(vp_points0,vp_points1, 'Test', viewup="z", interactive=True)

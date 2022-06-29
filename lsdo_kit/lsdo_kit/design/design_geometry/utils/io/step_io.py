@@ -155,7 +155,7 @@ def read_gmsh_stp(geo, file_name):
         for j in range(num_rows_of_cps):
             col_cntrl_pts = point_table.loc[point_table["lines"].isin(parsed_info_dict[f'surf{i}_cp_line_nums'][j])][['x', 'y', 'z']]
             if ((len(col_cntrl_pts) != num_cp_per_row) and (len(col_cntrl_pts) != 1)):
-                #print('SKIPPED SURFACES: ', parsed_info_dict[f'surf{i}_name'])
+                print('SKIPPED SURFACES: ', parsed_info_dict[f'surf{i}_name'])
                 # geo.initial_input_bspline_entity_dict.pop(f'surf{i}_name', None)
                 # geo.input_bspline_entity_dict.pop(f'surf{i}_name', None)
                 # filtered = True
@@ -186,7 +186,9 @@ def read_gmsh_stp(geo, file_name):
         #print('INDEXING CONTROL POINTS SHAPE: ', cntrl_pts.shape[0])
         if np.sum(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) \
             or np.sum(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1])\
-            or np.any(cntrl_pts.shape[0] <= 8):        
+            or np.any(cntrl_pts.shape[0] <= 8)\
+            or num_rows_of_cps < 3\
+            or num_cp_per_row < 3: #    
         # if np.sum(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) \
         #     or np.sum(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1])\
         #     or np.any(cntrl_pts.shape[0] <= 8)\

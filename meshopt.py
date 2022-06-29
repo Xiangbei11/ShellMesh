@@ -14,6 +14,9 @@ from pyoctree import pyoctree as ot
 
 from stl import mesh
 import meshio
+import vedo
+
+import matplotlib.pyplot as plt
 
 class meshopt(object):
     def __init__(self,vertexCoords,trilist,quadlist,w1,w2,w3,itr,plot,fixedvert,dupvert=np.empty([0],dtype=np.int32)):
@@ -55,68 +58,53 @@ class meshopt(object):
                 self.fullyquad()
 
     # splitting optimization
-    def splitting(self):
+    def splitting(self, plot = False):
+        print('Splitting setup...')
         meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3) 
-        # # optprep = meshopt.computenormal()
-        # # normal = optprep.normal# normal vector on each vertex
-        # # cs = meshopt.computecs()# local coordinate system on each vertex
-        # # # print out normals to check if they are valid
-        # # print('normal',np.argwhere(np.isnan(normal)))
-        # # print('normal',np.isnan(np.min(normal)))
-        # # print('cs',np.argwhere(np.isnan(cs)))
-        print('splitting setup...')
-        vertexCoords = self.vertexCoords
-        # #fixed = vertexCoords[self.fixedvert]
-        trilist = self.trilist
-        quadlist = self.quadlist
-        w1 = self.w1
-        w2 = self.w2
-        w3 = self.w3
-        # 
-        meshopt = pymeshopt.Pymeshopt(vertexCoords,trilist,quadlist,w1,w2,w3)
-        matrix = meshopt.creatematrix()# coefficient matrix
+        matrix = meshopt.create_splitting_matrix()# coefficient matrix
+        num_polygons = matrix.shape[0]
+        Cs = matrix.flatten()
         
-        nel = matrix.shape[0]
-        print(len(trilist),len(quadlist))
-        print('nel',nel)
-        #exit()
-        C = matrix.flatten()
-        num_poly = len(trilist)+len(quadlist)
-        # # num_tri = len(trilist)
-        # # num_quad = len(quadlist)
-        # # create linear constraint
-        data = np.ones((11*nel,1)).flatten()
-        row = np.einsum('i,j->ij',np.arange(nel),np.ones(11)).flatten()
+        data = np.ones((11*num_polygons,1)).flatten()
+        row = np.einsum('i,j->ij',np.arange(num_polygons),np.ones(11)).flatten()
         col = np.arange(len(data))
-        A1 = coo_matrix((data,(row,col)), shape=[nel,nel*11])
-        B1 = np.ones((num_poly,1)).flatten()
+        A1 = coo_matrix((data,(row,col)), shape=[num_polygons,num_polygons*11])
+        B1 = np.ones((num_polygons,1)).flatten()
         equcon=meshopt.equcon()
         data=equcon.data
         row=equcon.row
         col=equcon.col
-        A2 = coo_matrix((data,(row,col)), shape=[equcon.sharededges*3,nel*11])
+        A2 = coo_matrix((data,(row,col)), shape=[equcon.sharededges*3,num_polygons*11])
         B2=equcon.b
         A = scipy.sparse.vstack([A1,A2])
         B = np.concatenate((B1,B2)).flatten()
         bound = meshopt.createbounds(self.fixedvert)
-        print('bound',bound)
-        print('splitting optimizing...')
+
         opt = gp.Model("split")
-        print(np.shape(matrix))
-        print(np.shape(C))
-        x = opt.addMVar(shape=len(C),lb=bound[0,:], ub=bound[1,:], vtype=GRB.BINARY, name="x")
-        print(np.shape(x))
-        #exit()
-        opt.setObjective(C @ x, GRB.MINIMIZE)
+        x = opt.addMVar(shape=len(Cs),lb=bound[0,:], ub=bound[1,:], vtype=GRB.BINARY, name="x")
+        print(x[0])
+        opt.setObjective(Cs @ x, GRB.MINIMIZE)
         opt.addMConstrs(A,x,'=',B)
-        a = np.eye(len(C))
-        print('splitting optimizing start...')
+        print('num_polygons',num_polygons, 'self.vertexCoords', self.vertexCoords.shape[0])
+        print('Cs',np.shape(Cs))
+        print('x', np.shape(x))
+        print('A', np.shape(A))
+        print('B', np.shape(B))
+        print('A1', np.shape(A1))
+        print('B1', np.shape(B1))
+        print('A2', np.shape(A2))
         opt.optimize()
-        print('splitting optimize finish')
-        a=(np.argwhere(x.X > 0.5).flatten()-np.linspace(0,11*(nel-1),nel)).astype(int)
+        print(x.X)
+        #
+        a=(np.argwhere(x.X > 0.5).flatten()-np.linspace(0,11*(num_polygons-1),num_polygons)).astype(int)
+        print('a', a.shape, a)
+        print('x.X', np.shape(x.X), x.X)
+        print('np.argwhere(x.X > 0.5)', np.shape(np.argwhere(x.X > 0.5)), np.argwhere(x.X > 0.5))
+        print('np.argwhere(x.X > 0.5).flatten()', np.shape(np.argwhere(x.X > 0.5).flatten()),np.linspace(0,11*(num_polygons-1),num_polygons))
+        print('np.linspace(0,11*(num_polygons-1),num_polygons)', np.shape(np.linspace(0,11*(num_polygons-1),num_polygons)))
+        exit()
         output = meshopt.splitupdatemesh(a.astype(np.int32),self.fixedvert)
         vertexCoords = output.vertlist
-        #splitcoord = output.splitcoord
         trilist = output.trilist
         quadlist = output.quadlist
         self.fixedvert = output.fixedvert.astype(np.int32)
@@ -124,47 +112,33 @@ class meshopt(object):
         vertexCoords=vertexCoords.astype(np.float32)
         trilist=trilist.astype(np.int32)
         quadlist=quadlist.astype(np.int32)
-        # print('----------------------------',len(self.fixedvert))
-
-        # meshopt = pymeshopt.Pymeshopt(vertexCoords,trilist,quadlist,self.w1,self.w2,self.w3)    
-        
-        # optprep = meshopt.computenormal()
-        # normal = optprep.normal
-        # cs = meshopt.computecs()   
-        # print('normal',np.argwhere(np.isnan(normal)))
-        # print('normal',np.isnan(np.min(normal)))
-        # print('cs',np.argwhere(np.isnan(cs)))
+        if True:
+            mesh_tri = vedo.Mesh([vertexCoords, trilist], alpha=0.5)
+            mesh_tri.backColor().lineColor('blue').lineWidth(6) 
+            mesh_quad = vedo.Mesh([vertexCoords, quadlist], alpha=0.9)
+            mesh_quad.backColor().lineColor('red').lineWidth(6) 
+            mesh_ini = vedo.Mesh([self.vertexCoords, self.trilist], alpha=0.2)
+            mesh_ini.backColor().lineColor('green').lineWidth(3) 
+            vd_ini = vedo.Plotter(axes=1)
+            vd_ini.show(mesh_ini,'Ini_mesh', viewup="z", interactive=False) 
+            vd_test = vedo.Plotter(axes=1)
+            print('plot finished', len(trilist),len(quadlist))
+            vd_test.show(mesh_tri, mesh_quad,mesh_ini,'optimizie_mesh', viewup="z",interactive=True)    
+            exit()         
         return vertexCoords, trilist, quadlist
 
     # merging optimization
     def merging(self):
-        meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3) 
-        optprep = meshopt.computenormal()
-        normal = optprep.normal
-        cs = meshopt.computecs() 
-        print('normal',np.argwhere(np.isnan(normal)))
-        print('normal',np.isnan(np.min(normal)))
-        print('cs',np.argwhere(np.isnan(cs)))
-        print('MMMMMmerging setup...')
-        vertexCoords = self.vertexCoords
-        trilist = self.trilist
-        quadlist = self.quadlist
-        w1 = self.w1
-        w2 = self.w2
-        w3 = self.w3
-        if len(trilist)==0:
-            return trilist,quadlist
-        meshopt = pymeshopt.Pymeshopt(vertexCoords,trilist,quadlist,w1,w2,w3)
-        C = meshopt.creatematrixmerge()
+        meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3)
+        C = meshopt.create_merging_vector()
         print('C finished', C.shape)
-        #exit()
         A_ub = meshopt.ubcon()
         print('A_ub finished')
-        b_ub = np.ones(len(trilist))
+        b_ub = np.ones(len(self.trilist))
         print('creatint bound...')
-        print()
-        #print('self.fixedvert',self.fixedvert)
-        print()
+        # print()
+        # print('self.fixedvert',self.fixedvert)
+        # print()
         bound = meshopt.createboundsmerge(self.fixedvert)
         print('end bound...')
         opt = gp.Model("merge")
@@ -183,24 +157,24 @@ class meshopt(object):
         quadlist = output.quadlist
         trilist=trilist.astype(np.int32)
         quadlist=quadlist.astype(np.int32)
-        edges = meshopt.uniedges()
-        edges = edges.astype(int)
-        meshopt = pymeshopt.Pymeshopt(vertexCoords,trilist,quadlist,w1,w2,w3)
-        # optprep = meshopt.computenormal()
-        # normal = optprep.normal
-        fixed = vertexCoords[self.fixedvert]
 
-        meshopt = pymeshopt.Pymeshopt(self.vertexCoords,trilist,quadlist,self.w1,self.w2,self.w3)    
-        optprep = meshopt.computenormal()
-        normal = optprep.normal
-        cs = meshopt.computecs()   
-        print('normal',np.argwhere(np.isnan(normal)))
-        print('normal',np.isnan(np.min(normal)))
-        print('cs',np.argwhere(np.isnan(cs)))
+        if 0:
+            mesh_tri = vedo.Mesh([self.vertexCoords, trilist], alpha=0.5)
+            mesh_tri.backColor().lineColor('blue').lineWidth(6) 
+            mesh_quad = vedo.Mesh([self.vertexCoords, quadlist], alpha=0.9)
+            mesh_quad.backColor().lineColor('red').lineWidth(6) 
+            mesh_ini = vedo.Mesh([self.vertexCoords, self.trilist], alpha=0.2)
+            mesh_ini.backColor().lineColor('green').lineWidth(3) 
+            vd_ini = vedo.Plotter(axes=1)
+            vd_ini.show(mesh_ini,'Ini_mesh', viewup="z", interactive=False) 
+            vd_test = vedo.Plotter(axes=1)
+            print('plot finished', len(trilist),len(quadlist))
+            vd_test.show(mesh_tri, mesh_quad,'optimizie_mesh', viewup="z",interactive=True)    
+            exit()  
         return trilist, quadlist
 
     # apply the KKT conditions and get the following work (faster and is used)
-    def qpmanual(self,num_itr=15, tol=1e-4, w=20, limit=0.7):
+    def qpmanual(self,num_itr=50, tol=1e-4, w=20, limit=0.7):
         '''
         num_itr : number of times of doing the smoothing and projection methods
         tol : if the norm of the displacement vector is smaller than tol, for loop stops
@@ -223,7 +197,7 @@ class meshopt(object):
         weight[weight<limit] = 1e20
         weight = np.outer(weight,np.ones(3)).flatten()
         for i in range(num_itr):
-            print('interation '+str(i))
+            
             num_v = len(self.vertexCoords)
             
             edges = meshopt.uniedges().astype(np.int32)
@@ -255,6 +229,7 @@ class meshopt(object):
             b = b.toarray().reshape(num_v*4)*(-0.5)
             d = scipy.sparse.linalg.splu(M)
             d = d.solve(b)[:num_v*3]
+            print('interation '+str(i),np.linalg.norm(d))
             vertlist = vertlist + d
             vertlist1 = vertlist.reshape(num_v,3).astype(np.float32)
             tree = ot.PyOctree(self.refv,self.reft,self.refq)
@@ -283,7 +258,23 @@ class meshopt(object):
         trilist = self.trilist
         quadlist = self.quadlist
         fixed = self.vertexCoords[self.fixedvert]
-        print('fully quad mesh generated')
+        print('fully quad mesh generated',len(trilist),len(quadlist))
+
+
+        
+        if 0:
+            # mesh_tri = vedo.Mesh([vertexCoords, trilist], alpha=0.5)
+            # mesh_tri.backColor().lineColor('blue').lineWidth(6) 
+            mesh_quad = vedo.Mesh([vertexCoords, quadlist], alpha=0.9)
+            mesh_quad.backColor().lineColor('red').lineWidth(6) 
+            # mesh_ini = vedo.Mesh([self.vertexCoords, self.trilist], alpha=0.2)
+            # mesh_ini.backColor().lineColor('green').lineWidth(3) 
+            # vd_ini = vedo.Plotter(axes=1)
+            # vd_ini.show(mesh_ini,'Ini_mesh', viewup="z", interactive=False) 
+            vd_test = vedo.Plotter(axes=1)
+            print('plot finished', len(trilist),len(quadlist))
+            vd_test.show(mesh_quad,'optimizie_mesh', viewup="z",interactive=True)    
+            exit()
 
     # save as stl (not used since stl only contains triangles)
     def saveasstl(self,stl_file_name):
@@ -299,7 +290,7 @@ class meshopt(object):
         cube.save('{}.stl'.format(stl_file_name))
 
     # save as vtk (mostly often used)
-    def saveasvtk(self,vtk_file_name,tri=True):
+    def saveasvtk(self,vtk_file_name):
         '''
         tri: True => save as triangles, False => save as quads
         '''
@@ -307,20 +298,25 @@ class meshopt(object):
         points = self.vertexCoords
         cells = []
         # print(len(points))
+        for i in range(len(self.quadlist)):
+            tuple = ("quad",self.quadlist[i,:].reshape(1,4))
+            cells.append(tuple)
+        meshio.write_points_cells(
+            vtk_file_name+"_quad.vtk",
+            points,
+            cells
+            )
+        
         triindex1 = np.array([0,1,2],dtype=np.int32)
         triindex2 = np.array([2,3,0],dtype=np.int32)
-        if (tri):
-            for i in range(len(self.quadlist)):
-                tuple1 = ("triangle",self.quadlist[i,triindex1].reshape(1,3))
-                tuple2 = ("triangle",self.quadlist[i,triindex2].reshape(1,3))
-                cells.append(tuple1)
-                cells.append(tuple2)
-        else:
-            for i in range(len(self.quadlist)):
-                tuple = ("quad",self.quadlist[i,:].reshape(1,4))
-                cells.append(tuple)
+        cells = []
+        for i in range(len(self.quadlist)):
+            tuple1 = ("triangle",self.quadlist[i,triindex1].reshape(1,3))
+            tuple2 = ("triangle",self.quadlist[i,triindex2].reshape(1,3))
+            cells.append(tuple1)
+            cells.append(tuple2)
         meshio.write_points_cells(
-            vtk_file_name+".vtk",
+            vtk_file_name+"_tri.vtk",
             points,
             cells
             )

@@ -20,6 +20,8 @@ from lsdo_kit.cython.get_open_uniform_py import get_open_uniform
 
 from meshopt import meshopt
 from member import Member
+import pymeshopt
+from vedo import Points, Plotter, colors
 
 class ShellMesh(Mesh):
     def __init__(self, name, pointset_list=[]) -> None:
@@ -29,9 +31,11 @@ class ShellMesh(Mesh):
         self.members_dict = {}
         self.tri_connectivity = np.empty((0,3), dtype=np.int32) 
         self.num_of_members = 0
+        #self.vedo_test = vedo.Plotter(axes=0)
 
-    def extract_pointset_list_from_bspline_surface(self, geo, bspline_surface_list): 
-        
+    def extract_pointset_list_from_bspline_surface(self, geo, bspline_surface_list, plot = False): 
+        self.vps = []
+
         self.mapping = sps.csc_matrix(np.empty((0,len(geo.total_cntrl_pts_vector))))
         self.total_cntrl_pts_vector = geo.total_cntrl_pts_vector
 
@@ -39,9 +43,13 @@ class ShellMesh(Mesh):
         for bspline_surface in bspline_surface_list:
             pointset = self.extract_pointset_from_bspline_surface(geo, bspline_surface)
             pointset_list.append(pointset)
+        
+        if plot:
+            vp_init_out = vedo.Plotter()
+            vp_init_out.show(self.vps, 'Initial control points', axes=1, viewup="z", interactive = True)          
         return pointset_list
     
-    def extract_pointset_from_bspline_surface(self, geo, bspline_surface):
+    def extract_pointset_from_bspline_surface(self, geo, bspline_surface, name_pre = 'OML: '):
         order_u = bspline_surface.order_u
         order_v = bspline_surface.order_v
         num_control_points_u = bspline_surface.shape[0]
@@ -87,16 +95,29 @@ class ShellMesh(Mesh):
             offset_absolute_map = None,
             physical_coordinates = None,
             permutation_matrix = None,
-            name = 'OML: ' + bspline_surface.name
+            name = name_pre + bspline_surface.name
             )
         geo.pointsets_dict[geo.current_id] = pointset
+        
+        # #print(geo.current_id)
+        # if geo.current_id != 11 :#or geo.current_id-1 != 11 
+        #     pass
+        # else:        
+        #     if geo.current_id-1 > 238:
+        #         color = list(vedo.colors.colors.values())[geo.current_id-239-1]#239
+        #     else:
+        #         color = list(vedo.colors.colors.values())[geo.current_id-1]        
+        #     self.vps.append(vedo.Points(relative_map.dot(self.total_cntrl_pts_vector), r=8, c = color))
+
         geo.current_id += 1
         geo.current_pointset_pts += np.cumprod(pointset.shape)[-2]
+
         return pointset
 
     def merge_OML(self, geo, merged_OML_relationship_list, plot = False):
         OML_ctrl_pointset_list = []
         for merged_list in merged_OML_relationship_list:
+            print(merged_list)
             pointset0 = geo.pointsets_dict[merged_list[0]]
             pointset1 = geo.pointsets_dict[merged_list[1]]
             geo.assemble(pointset = pointset0)
@@ -105,6 +126,7 @@ class ShellMesh(Mesh):
             points1 = geo.evaluate(pointset = pointset1) 
             num_points0 = pointset0.shape[0]
             num_points1 = pointset1.shape[0]
+            #print('num_points0',num_points0,'num_points1',num_points1)
             relative_map = sps.vstack([pointset0.absolute_map,pointset1.absolute_map])
 
             output_pointset = PointSet(
@@ -124,33 +146,65 @@ class ShellMesh(Mesh):
             geo.current_id += 1
             geo.current_pointset_pts += np.cumprod(output_pointset.shape)[-2]
 
-            A = np.around(points0, decimals=8)
-            B = np.around(points1, decimals=8)
+            A = np.around(points0, decimals=3)#decimals=8
+            B = np.around(points1, decimals=3)#decimals=8
             intersection_bool = (B[:, None] == A).all(-1).any(1)
-            intersection_points = points1[intersection_bool]        
+            intersection_points = points1[intersection_bool]    
+            
             if len(intersection_points) != 0:               
                 points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
-                point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points1)
+                #print('num_points0',num_points0,'num_points1',num_points1)
+                point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points0)
                 output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
                 if len(point_indices)%len(intersection_points) ==0:
                     output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
                 else: 
-                    print('Warning0') 
+                    print(len(np.arange(num_points0)), len(points1_reduced_indices+num_points0))
+                    print(len(point_indices), len(intersection_points))
+                    print('Warning0')     
+                    exit()               
                 geo.assemble(pointset = output_pointset)
-                geo.evaluate(pointset = output_pointset)
-                merged_ctrl_pointsets = geo.fit_bspline_ctrl_pointsets([output_pointset])
-                merged_ctrl_pointsets = merged_ctrl_pointsets[0]
-                merged_ctrl_pointsets.name = 'ctrl_pts_' + merged_list[2]  
-                OML_ctrl_pointset_list.append(merged_ctrl_pointsets)
+                points = geo.evaluate(pointset = output_pointset)
+                
+                # print(points.shape)
+                # vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) 
+                # vd_test = vedo.Plotter(axes=0)
+                # vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) 
+
+                if len(merged_OML_relationship_list) == 1:#     
+                    merged_ctrl_pointset = geo.fit_bspline_ctrl_pointsets([output_pointset])#, plot = True
+                    merged_ctrl_pointset = merged_ctrl_pointset[0]
+                    merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2]  
+                    OML_ctrl_pointset_list.append(merged_ctrl_pointset)
+                else:
+                    merged_ctrl_pointset = output_pointset
+                    merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2] 
+                    merged_ctrl_pointset.shape = np.append(len(point_indices),3)
+                    OML_ctrl_pointset_list.append(merged_ctrl_pointset)
             else:
                 print('Warning1')
                 print(merged_list[2],len(intersection_bool), len(intersection_points))
+                exit()
             
             if plot:
+                print(len(points0), len(points1),len(intersection_points))
+                geo.assemble(pointset = merged_ctrl_pointset)
+                cntrl_pts_vector = geo.evaluate(pointset = merged_ctrl_pointset)
+
+                # num_points_u0, num_points_v0  = 330,15       
+                # u0_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u0), np.ones(num_points_v0)).flatten()
+                # v0_vec = np.einsum('i,j->ij', np.ones(num_points_u0), np.linspace(0., 1., num_points_v0)).flatten()            
+                # u0_v0_vec = np.vstack((u0_vec, v0_vec)).T
+                # basis_matrix = self.discritize_ctrl_pointset(merged_ctrl_pointset,uv_vec = u0_v0_vec)
+                # points = basis_matrix.dot(cntrl_pts_vector)
+
                 vd_points0 = vedo.Points(points0, r=10, c='red',alpha=0.8)
                 vd_points1 = vedo.Points(points1, r=15, c='green',alpha=0.5) 
-                vd_test = vedo.Plotter(axes=0)
-                vd_test.show(vd_points0, vd_points1,  'Test', viewup="z", interactive=True) 
+
+                print(cntrl_pts_vector.shape)
+                vd_points2 = vedo.Points(cntrl_pts_vector, r=20, c='blue',alpha=0.3) 
+                vd_test = vedo.Plotter(axes=1)
+                vd_test.show(vd_points0, vd_points1, vd_points2, 'Test', viewup="z", interactive=False) 
         return OML_ctrl_pointset_list
 
     def identify_intersection_list(self, geo, intersection_list, plot = False):
@@ -230,8 +284,9 @@ class ShellMesh(Mesh):
         self.members_dict[pointset_ini.name].options['tri_connectivity'] = B['triangles']
         connectivity_check = np.copy(B['triangles'])
         connectivity_check_list = list(np.copy(B['triangles']).flatten())
+        
         if np.amax(connectivity_check) >= len(self.members_dict[pointset0.name].options['u_v_vec']):
-            print('WWWWD')
+            print('test_eVTOL_shellmesh_2')
             # print(len(connectivity_check))
             # print(len(connectivity_check_list))
             # print(max(connectivity_check_list))
@@ -254,9 +309,10 @@ class ShellMesh(Mesh):
                 connectivity_check = np.append(connectivity_check, np.array([[1125,1095,1096], [1095,1065,1066], [1097,1095,1066], [1097,1095,1096]], dtype = np.int32), axis = 0)  #
             self.members_dict[pointset_ini.name].options['tri_connectivity'] = connectivity_check
             
-        connectivity_check_list = list(np.copy(connectivity_check).flatten())    
+        connectivity_check_list = list(np.copy(connectivity_check).flatten())   
+
         if np.amax(connectivity_check) >= len(self.members_dict[pointset0.name].options['u_v_vec']):
-            print('RRRRD')
+            print('test_eVTOL_shellmesh_3')
             # print(len(connectivity_check))
             # print(len(connectivity_check_list))
             # print(max(connectivity_check_list))
@@ -792,10 +848,10 @@ class ShellMesh(Mesh):
             mesh = vedo.Mesh([self.total_points, self.tri_connectivity], alpha=0.3)
             mesh.backColor().lineColor('green').lineWidth(3)
             vd_points1 = vedo.Points(self.total_points[constrained,:], r=20, c='red',alpha = 0.7)  
-            temp = [1095]
-            vd_points2 = vedo.Points(self.total_points[temp,:], r=25, c='black') 
+            # temp = [1095]
+            # vd_points2 = vedo.Points(self.total_points[temp,:], r=25, c='black') 
             vd_test = vedo.Plotter(axes=1)
-            vd_test.show(mesh, 'Test', vd_points1, vd_points2, viewup="z", interactive=False)#True
+            vd_test.show(mesh, 'Test', vd_points1, viewup="z", interactive=True)#True
             #exit()
             # mesh_test = vedo.Mesh([total_test, self.tri_connectivity], alpha=0.3)
             # mesh_test.backColor().lineColor('green').lineWidth(3) 
@@ -822,20 +878,30 @@ class ShellMesh(Mesh):
             vertexCoords = np.copy(memb.options['coordinates'].astype('float32'))
             trilist = np.copy(memb.options['tri_connectivity'])
             fixedvert = np.copy(np.array(memb.options['constrained_node_indices'], dtype='int32'))
-            if memb.options['id'] ==3:
-                itr=[0,1,2,3]                              
+            if 1:#memb.options['id'] ==0
+                #itr=[1,2,3] #w4 = 0.9 26734 
+                #itr=[1,2,3] #w4 = 0.8 26570 
+                #itr=[1,2,2,2,2,3] #w4 = 1  27240 
+                itr=[1,2,3]  #w4 = 0.7 26486
+                # if memb.options['id'] ==0:#plot
+                #     mesh = vedo.Mesh([vertexCoords, m.trilist], alpha=0.3)
+                #     mesh.backColor().lineColor('green').lineWidth(3) 
+                #     vd_test = vedo.Plotter(axes=1)
+                #     vd_test.show(mesh, 'optimizie_mesh', viewup="z", interactive=True)   
+                #     exit()          
                 m = meshopt(vertexCoords,trilist,quadlist, fixedvert=fixedvert ,itr=itr, w1=1.,w2=1.,w3=1., plot = 0)#,w4 =1.
                 m.optimization()
                 m.saveasvtk('CAD/'+memb.options['name']) 
                 memb.options['opt_coordinates'] = m.vertexCoords
                 memb.options['opt_connectivity'] = m.quadlist
 
-            if True:#plot:#
-                mesh = vedo.Mesh([vertexCoords, trilist], alpha=0.3)
+            if 0:#plot memb.options['id'] ==
+                mesh = vedo.Mesh([vertexCoords, m.quadlist], alpha=0.3)
                 mesh.backColor().lineColor('green').lineWidth(3)
                 vd_points1 = vedo.Points(vertexCoords[fixedvert,:], r=20, c='red',alpha = 0.7)  
                 vd_test = vedo.Plotter(axes=1)
-                vd_test.show(mesh, 'optimizie_mesh', vd_points1, viewup="z", interactive=True)               
+                vd_test.show(mesh, 'optimizie_mesh', viewup="z", interactive=True)   
+                exit()            
     
     def construct_whole_structure_optmesh(self, vtk_file_name):
         print('Construct whole structure optmesh')
@@ -844,7 +910,7 @@ class ShellMesh(Mesh):
         for memb in self.members_dict.values():
             quads = np.concatenate((quads,np.copy(memb.options['opt_connectivity']+len(pts))),axis=0)
             pts = np.concatenate((pts, np.copy(memb.options['opt_coordinates'])),axis=0)
-        import pymeshopt
+
         opt = pymeshopt.Pymeshopt(pts.astype(np.float32),np.array([[0,1,2]],dtype=np.int32),quads.astype(np.int32),1.,1.,1.)
         self.uni = opt.pymergeduppts()
         self.saveasvtk(vtk_file_name)
@@ -852,6 +918,7 @@ class ShellMesh(Mesh):
     def saveasvtk(self, vtk_file_name):
         points = self.uni.vertlist
         quadlist = self.uni.quadlist
+        
         print('Starting to save as vtk', len(points), len(quadlist))
         triindex1 = np.array([0,1,2],dtype=np.int32)
         triindex2 = np.array([2,3,0],dtype=np.int32)  
@@ -875,6 +942,24 @@ class ShellMesh(Mesh):
             points,
             cells
             ) 
+        if 1:#data
+            np.savetxt('data/vertlist.txt', points)
+            np.savetxt('data/quadlist.txt', quadlist)
+            trilist = np.empty((0,3),dtype=np.int32)
+            meshopt_test = pymeshopt.Pymeshopt(points.astype(np.float32),trilist.astype(np.int32),quadlist.astype(np.int32),1.,1.,1.) 
+            aspect_ratio = meshopt_test.calculate_aspect_ratio()
+            internal_angles = meshopt_test.calculate_internal_angles()
+            np.savetxt('data/aspect_ratio.txt', aspect_ratio)
+            np.savetxt('data/internal_angles.txt', internal_angles)
+            print('aspect_ratio', aspect_ratio.shape,'internal_angles', internal_angles.shape)
+            fig, axs = plt.subplots(2,1, figsize= (14,8))
+            axs[0].hist(aspect_ratio, color = 'blue', alpha = 0.8, bins = 50)
+            axs[0].title.set_text('Aspect Ratio')
+            axs[1].hist(internal_angles.flatten(), color = 'orange', alpha = 0.8, bins =50)
+            axs[1].title.set_text('Internal Angles')
+            fig.tight_layout()
+            plt.savefig('data/histogram')            
+            plt.show()
 
 
 

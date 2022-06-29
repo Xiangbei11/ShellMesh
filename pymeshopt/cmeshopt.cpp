@@ -3,7 +3,6 @@
 
 opt::opt(vector<vector<double> > _vertexCoords, vector<vector<int> > _triConnectivity, vector<vector<int> > _quadConnectivity, double _w1, double _w2, double _w3)
 {
-    cout<<"PPP"<<p<<"\n";
     vertexCoords = _vertexCoords;
     triConnectivity = _triConnectivity;
     quadConnectivity = _quadConnectivity;
@@ -13,6 +12,74 @@ opt::opt(vector<vector<double> > _vertexCoords, vector<vector<int> > _triConnect
 }
 
 opt::~opt() {}
+
+// bulid up coefficient matrix for splitting optimization
+vector<double> opt::calculate_aspect_ratio()
+{       
+    int i;
+    if (triConnectivity.size() != 0) {
+        cout<<"Not fully quad"<<"\n";        
+    }
+    int num_poly = quadConnectivity.size(); 
+    vector<double> aspect_ratio(num_poly,0.0);
+    vector<double> verinit(3,0.0);
+    vector<vector<double> > quadvertices(4,verinit);
+
+    for (i=0;i<(int) quadConnectivity.size();i++){
+        quadvertices[0] = vertexCoords[quadConnectivity[i][0]];
+        quadvertices[1] = vertexCoords[quadConnectivity[i][1]];
+        quadvertices[2] = vertexCoords[quadConnectivity[i][2]];
+        quadvertices[3] = vertexCoords[quadConnectivity[i][3]];
+        vector<double> e01 = vectSubtract(quadvertices[1],quadvertices[0]);
+        vector<double> e12 = vectSubtract(quadvertices[2],quadvertices[1]);
+        vector<double> e23 = vectSubtract(quadvertices[3],quadvertices[2]);
+        vector<double> e30 = vectSubtract(quadvertices[0],quadvertices[3]);
+        double opt10Lavg = (vectNorm(e01)+vectNorm(e12)+vectNorm(e23)+vectNorm(e30))/4;
+        aspect_ratio[i] = (pow(vectNorm(e01)/opt10Lavg,p) + pow(vectNorm(e12)/opt10Lavg,p)
+            + pow(vectNorm(e23)/opt10Lavg,p) + pow(vectNorm(e30)/opt10Lavg,p))/4;
+    }
+    return aspect_ratio;    
+}
+
+// bulid up coefficient matrix for splitting optimization
+vector<vector<double> > opt::calculate_internal_angles()
+{   
+    int i;
+    if (triConnectivity.size() != 0) {
+        cout<<"Not fully quad"<<"\n";        
+    }
+    int num_poly = quadConnectivity.size(); 
+    vector<double> init(4,0.0);
+    vector<vector<double> > internal_angles(num_poly, init);
+    vector<double> verinit(3,0.0);
+    vector<vector<double> > quadvertices(4,verinit);
+    
+    int theta = 1;
+    for (i=0;i<(int) quadConnectivity.size();i++){
+        quadvertices[0] = vertexCoords[quadConnectivity[i][0]];
+        quadvertices[1] = vertexCoords[quadConnectivity[i][1]];
+        quadvertices[2] = vertexCoords[quadConnectivity[i][2]];
+        quadvertices[3] = vertexCoords[quadConnectivity[i][3]];
+        vector<double> angles(4,0.0);
+        vector<double> e01 = vectSubtract(quadvertices[1],quadvertices[0]);
+        vector<double> e03 = vectSubtract(quadvertices[3],quadvertices[0]);
+        vector<double> e10 = vectSubtract(quadvertices[0],quadvertices[1]);
+        vector<double> e12 = vectSubtract(quadvertices[2],quadvertices[1]);
+        vector<double> e21 = vectSubtract(quadvertices[1],quadvertices[2]);
+        vector<double> e23 = vectSubtract(quadvertices[3],quadvertices[2]);
+        vector<double> e32 = vectSubtract(quadvertices[2],quadvertices[3]);
+        vector<double> e30 = vectSubtract(quadvertices[0],quadvertices[3]);        
+        angles[0] = angleRatio(e01,e03,theta);
+        angles[1] = angleRatio(e10,e12,theta);
+        angles[2] = angleRatio(e21,e23,theta);
+        angles[3] = angleRatio(e32,e30,theta);
+        internal_angles[i] = angles;
+    }
+    return internal_angles;
+    
+}
+
+
 // bulid up coefficient matrix for splitting optimization
 vector<vector<double> > opt::buildupmatrix()
 {   
@@ -39,7 +106,7 @@ vector<vector<double> > opt::buildupmatrix()
         quadvertices[1] = vertexCoords[quadConnectivity[j][1]];
         quadvertices[2] = vertexCoords[quadConnectivity[j][2]];
         quadvertices[3] = vertexCoords[quadConnectivity[j][3]];
-        matrix[triConnectivity.size()+j] = splitquad(quadvertices);
+        matrix[triConnectivity.size()+j] = splitquad(quadvertices); 
     }
     return matrix;
     
@@ -48,7 +115,6 @@ vector<vector<double> > opt::buildupmatrix()
 // 7 splitting options for triangles and their corresponding energy
 vector<double> opt::splittriangle(vector<vector<double> > vertices)
 {   
-    cout<<"PPPPP "<<p<<"\n";
     // six vectors starting from each vertice to the other two
     vector<double> e01 = vectSubtract(vertices[1],vertices[0]);
     vector<double> e02 = vectSubtract(vertices[2],vertices[0]);
@@ -722,7 +788,8 @@ vector<double> opt::mergetriangles()
                             + w2*(pow(vectNorm(e01)/quadLavg,p) + pow(vectNorm(e12)/quadLavg,p) + pow(vectNorm(e23)/quadLavg,p) + pow(vectNorm(e30)/quadLavg,p))/4
                             + w3*(abs(dotProduct(cross,e01n)) + abs(dotProduct(cross,e12n)) + abs(dotProduct(cross,e23n)) + abs(dotProduct(cross,e30n)))/4;
         // the coefficent is calculated by subtracting energy before merging from the energy after merging
-        double energycost = energyafter - energybefore;
+        double w4 = 0.7;
+        double energycost = w4*energyafter - energybefore;//////////w4
         data[indices.edgeindex[i]] = energycost;
 
     }

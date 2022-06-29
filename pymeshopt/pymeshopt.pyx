@@ -55,6 +55,8 @@ cdef extern from "cmeshopt.h":
 
     cdef cppclass opt:
         opt(vector[vector[double]] _vertexCoords, vector[vector[int]] _triConnectivity, vector[vector[int]] _quadConnectivity, double _w1, double _w2, double _w3)
+        vector[double] calculate_aspect_ratio()
+        vector[vector[double]] calculate_internal_angles()
         vector[vector[double]] buildupmatrix()
         vector[vector[double]] buildbounds(vector[int] fixedvert)
         EqualityConstraint equcon()
@@ -117,7 +119,24 @@ cdef class Pymeshopt:
     def __dealloc__(self):
         del self.thisopt
 
-    def creatematrix(self):
+    def calculate_aspect_ratio(self):
+        cdef int i
+        cdef vector[double] aspect_ratio = self.thisopt.calculate_aspect_ratio()
+        py_aspect_ratio = np.zeros((aspect_ratio.size(),1))
+        for i in range(aspect_ratio.size()):
+            py_aspect_ratio[i] = aspect_ratio[i]
+        return py_aspect_ratio
+
+    def calculate_internal_angles(self):
+        cdef int i, j
+        cdef vector[vector[double]] internal_angles = self.thisopt.calculate_internal_angles()
+        py_internal_angles = np.zeros((internal_angles.size(),4))
+        for i in range(internal_angles.size()):
+            for j in range(4):
+                py_internal_angles[i,j]= internal_angles[i][j]
+        return py_internal_angles
+
+    def create_splitting_matrix(self):
         cdef int i, j
         cdef vector[vector[double]] matrix = self.thisopt.buildupmatrix()
         pymatrix = np.zeros((matrix.size(),11))
@@ -146,8 +165,7 @@ cdef class Pymeshopt:
         equalitycon.SetValues(equalityconstraint.data,equalityconstraint.row,equalityconstraint.col,equalityconstraint.b,equalityconstraint.sharededges)
         return equalitycon
 
-    def creatematrixmerge(self):
-        print('XXXXXXXX')
+    def create_merging_vector(self):
         cdef int i
         cdef vector[double] cvec = self.thisopt.mergetriangles()
         pyvec = np.zeros(cvec.size())
