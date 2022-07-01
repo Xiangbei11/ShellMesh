@@ -94,4 +94,26 @@ test = gp.Model('test') # export GRB_LICENSE_FILE=/Users/Sansara/Public/Code/A/g
 shell_mesh.optimizie_mesh()
 shell_mesh.construct_whole_structure_optmesh('CAD_test_eVTOL_shellmesh_2')
 
+'''        connectivity_check_list = list(np.copy(B['triangles']).flatten())
+        
+        if np.amax(connectivity_check) >= len(self.members_dict[pointset0.name].options['u_v_vec']):
+            print('test_eVTOL_shellmesh_2')
+            m = max(connectivity_check_list)
+            max_flatten_indices_list = [i for i, j in enumerate(connectivity_check_list) if j == m]
+            #print(max_flatten_indices_list)
+            max_indices_list = []
+            for i in max_flatten_indices_list:
+                print(i, (i)//3, connectivity_check[(i)//3,:]) 
+                max_indices_list.append((i)//3)
+                #print()
+            connectivity_check = np.delete(connectivity_check, max_indices_list,axis = 0)
+            print(len(connectivity_check))
+            if pointset1.name != 'ctrl_pts_OML_lower_wing':
+                print(pointset1.name)
+                connectivity_check = np.append(connectivity_check, np.array([[1125,1095,1096], [1095,1065,1066], [1097,1096,1066], [1066,1095,1096]], dtype = np.int32), axis = 0)#
+            else:
+                print(pointset1.name)
+                connectivity_check = np.append(connectivity_check, np.array([[1125,1095,1096], [1095,1065,1066], [1097,1095,1066], [1097,1095,1096]], dtype = np.int32), axis = 0)  #
+            self.members_dict[pointset_ini.name].options['tri_connectivity'] = connectivity_check'''
+
 

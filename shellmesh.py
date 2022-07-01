@@ -21,7 +21,8 @@ from lsdo_kit.cython.get_open_uniform_py import get_open_uniform
 from meshopt import meshopt
 from member import Member
 import pymeshopt
-from vedo import Points, Plotter, colors
+from vedo import Points, Plotter, colors, Plane
+#from vedo import *
 
 class ShellMesh(Mesh):
     def __init__(self, name, pointset_list=[]) -> None:
@@ -98,16 +99,6 @@ class ShellMesh(Mesh):
             name = name_pre + bspline_surface.name
             )
         geo.pointsets_dict[geo.current_id] = pointset
-        
-        # #print(geo.current_id)
-        # if geo.current_id != 11 :#or geo.current_id-1 != 11 
-        #     pass
-        # else:        
-        #     if geo.current_id-1 > 238:
-        #         color = list(vedo.colors.colors.values())[geo.current_id-239-1]#239
-        #     else:
-        #         color = list(vedo.colors.colors.values())[geo.current_id-1]        
-        #     self.vps.append(vedo.Points(relative_map.dot(self.total_cntrl_pts_vector), r=8, c = color))
 
         geo.current_id += 1
         geo.current_pointset_pts += np.cumprod(pointset.shape)[-2]
@@ -210,7 +201,7 @@ class ShellMesh(Mesh):
                     #     exit()         
               
             geo.assemble(pointset = output_pointset)
-            points = geo.evaluate(pointset = output_pointset)
+            geo.evaluate(pointset = output_pointset)
             
             # print(points.shape)
             # vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) 
@@ -344,86 +335,47 @@ class ShellMesh(Mesh):
         B = tr.triangulate(A,'p')  
         self.members_dict[pointset_ini.name].options['tri_connectivity'] = B['triangles']
         connectivity_check = np.copy(B['triangles'])
-        connectivity_check_list = list(np.copy(B['triangles']).flatten())
-        
-        if np.amax(connectivity_check) >= len(self.members_dict[pointset0.name].options['u_v_vec']):
-            print('test_eVTOL_shellmesh_2')
-            # print(len(connectivity_check))
-            # print(len(connectivity_check_list))
-            # print(max(connectivity_check_list))
-            m = max(connectivity_check_list)
-            max_flatten_indices_list = [i for i, j in enumerate(connectivity_check_list) if j == m]
-            #print(max_flatten_indices_list)
-            max_indices_list = []
-            for i in max_flatten_indices_list:
-                print(i, (i)//3, connectivity_check[(i)//3,:]) 
-                max_indices_list.append((i)//3)
-                #print()
-            connectivity_check = np.delete(connectivity_check, max_indices_list,axis = 0)
-            print(len(connectivity_check))
-            if pointset1.name != 'ctrl_pts_OML_lower_wing':
-                print(pointset1.name)
-                connectivity_check = np.append(connectivity_check, np.array([[1125,1095,1096], [1095,1065,1066], [1097,1096,1066], [1066,1095,1096]], dtype = np.int32), axis = 0)#
-            else:
-                print(pointset1.name)
-                #plot = 1
-                connectivity_check = np.append(connectivity_check, np.array([[1125,1095,1096], [1095,1065,1066], [1097,1095,1066], [1097,1095,1096]], dtype = np.int32), axis = 0)  #
-            self.members_dict[pointset_ini.name].options['tri_connectivity'] = connectivity_check
-            
-        connectivity_check_list = list(np.copy(connectivity_check).flatten())   
-
-        if np.amax(connectivity_check) >= len(self.members_dict[pointset0.name].options['u_v_vec']):
-            print('test_eVTOL_shellmesh_3')
-            # print(len(connectivity_check))
-            # print(len(connectivity_check_list))
-            # print(max(connectivity_check_list))
-            m = max(connectivity_check_list)
-            max_flatten_indices_list = [i for i, j in enumerate(connectivity_check_list) if j == m]
-            #print(max_flatten_indices_list)
-            max_indices_list = []
-            for i in max_flatten_indices_list:
-                print(i, (i)//3, connectivity_check[(i)//3,:]) 
-                max_indices_list.append((i)//3)
-                #print()
-            connectivity_check = np.delete(connectivity_check, max_indices_list,axis = 0)
-            print(len(connectivity_check))
-            if pointset1.name != 'ctrl_pts_OML_lower_wing':
-                print(pointset1.name)
-                connectivity_check = np.append(connectivity_check, np.array([[404,434,435], [374,404,405], [435,405,406], [404,405,435]], dtype = np.int32), axis = 0)#
-                #plot = 1
-            else:
-                print(pointset1.name)
-                #plot = 1
-                connectivity_check = np.append(connectivity_check, np.array([[404,434,435], [374,404,405], [404,405,406], [404,435,406]], dtype = np.int32), axis = 0)  #
-            self.members_dict[pointset_ini.name].options['tri_connectivity'] = connectivity_check
     
         if plot:
-            tr.compare(plt, A, B)         
-            plt.show(block = False) 
+            # tr.compare(plt, A, B)         
+            # plt.show(block = False) 
             # plt.show()
             # exit()
             test_points1 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
-            mesh = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
-            mesh.backColor().lineColor('green').lineWidth(3)
-            vd_points1 = vedo.Points(test_points1, r=15, c='red',alpha=0.8)  
             test_points2 = self.members_dict[pointset1.name].options['mapping'].dot(self.total_cntrl_pts_vector)
-            vd_points2 = vedo.Points(test_points2, r=15, c='blue', alpha=0.8)  #1379, 1340
             constrained = self.members_dict[pointset_ini.name].options['constrained_node_indices']
             test_points3 = test_points1[constrained,:]
+
+            mesh0 = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
+            mesh0.backColor().lineColor('green').lineWidth(3)  
+
+            vd_points1 = vedo.Points(test_points1, r=15, c='red',alpha=0.8)  
+            vd_points2 = vedo.Points(test_points2, r=15, c='blue', alpha=0.8)  #1379, 1340
             vd_points3 = vedo.Points(test_points3, r=20, c='violet', alpha=1.0)
             vd_points4 = vedo.Points(test_points4, r=15, c='red',alpha=0.8)
             vd_points5 = vedo.Points(test_points3, r=15, c='blue',alpha=0.8)
+            
+            mesh1 = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
+            mesh1.backColor().lineColor('green').lineWidth(0)            
+
+            
+            mesh2 = vedo.Mesh([np.append(test_points2,test_points3,axis=0), self.members_dict[pointset1.name].options['tri_connectivity']], alpha=0.3, c='blue')         
+            mesh2.lineWidth(0) 
+            mesh4 = vedo.Mesh([test_points4, connectivity_check], alpha=0.3, c='red')
+            mesh4.lineWidth(0)     
+
             vd_test = vedo.Plotter(axes=0)
-            vd_test.show(vd_points2,vd_points4,vd_points5, 'Test0', viewup="z", interactive=False) 
-            vd_test = vedo.Plotter(axes=0)
-            vd_test.show(vd_points5,vd_points2,self.vd_points111,self.vd_points222,self.vd_points000, 'Test1', viewup="z", interactive=False)                       
-            vd_test = vedo.Plotter(axes=0)
-            vd_points6 = vedo.Points(test_points2, r=15, c='blue', alpha=0.5)
-            vd_points7 = vedo.Points(test_points1, r=15, c='red',alpha=0.8) 
-            vd_test.show(mesh, vd_points7, vd_points6,vd_points3, 'Test0', viewup="z", interactive=False)             
-            vd_test = vedo.Plotter(axes=0)
-            vd_test.show(vd_points1, vd_points2,vd_points3, 'Test2', viewup="z", interactive=True) #mesh, 
+            vd_test.show(vd_points2,vd_points4,vd_points5, mesh2, mesh4,'Test0', viewup="z", interactive=True) 
             exit()
+            # vd_test = vedo.Plotter(axes=0
+            # vd_test.show(vd_points5,vd_points2,self.vd_points111,self.vd_points222,self.vd_points000, 'Test1', viewup="z", interactive=False)                       
+            # vd_test = vedo.Plotter(axes=0)
+            # vd_points6 = vedo.Points(test_points2, r=15, c='blue', alpha=0.5)
+            # vd_points7 = vedo.Points(test_points1, r=15, c='red',alpha=0.8) 
+            # vd_test.show(mesh, vd_points7, vd_points6,vd_points3, 'Test2', viewup="z", interactive=False)             
+            # vd_test = vedo.Plotter(axes=0)
+            # vd_test.show(vd_points1, vd_points2,vd_points3, 'Test3', viewup="z", interactive=True) #mesh, 
+            
    
     def identify_intersection(self, u0_v0_vec, pointset0, pointset1, num_points_u0, num_points_v0, num_points_u1, num_points_v1, edge_location, relationship):
         if relationship == '-':
@@ -872,7 +824,8 @@ class ShellMesh(Mesh):
         print()
         for memb in self.members_dict.values():
             #print(memb.options['id'], len(inde))
-            if memb.options['id'] == 1 or memb.options['id'] == 2:
+            if memb.options['id'] == 1 or memb.options['id'] == 2: 
+                print('test_eVTOL_shellmesh_1')
                 num_u_spar = 56
                 num_v_spar = 4
                 indices_v0 = np.arange(num_v_spar)
@@ -886,19 +839,6 @@ class ShellMesh(Mesh):
             inde = np.copy(memb.options['node_indices'])
             cons = list(np.copy(memb.options['constrained_node_indices']))
             
-            # # # if memb.options['id'] == 5:
-            # # #     # print(inde[0])
-            # # #     # print(cons)
-            # # #     # print(inde[cons])
-            # # #     inde[0]= 404
-            # # #     memb.options['node_indices'] = list(inde)
-            # # # if memb.options['id'] == 11:
-            # # #     # print(inde[0])
-            # # #     # print(cons)
-            # # #     # print(inde[cons])                
-            # # #     inde[0]= 1095
-            # # #     memb.options['node_indices'] = list(inde)
-
             for i in range(len(conn)):
                 for j in range(3):                    
                     conn[i,j] = inde[conn[i,j]] 
