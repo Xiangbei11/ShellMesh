@@ -187,8 +187,8 @@ def read_gmsh_stp(geo, file_name):
         if np.sum(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) \
             or np.sum(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1])\
             or np.any(cntrl_pts.shape[0] <= 8)\
-            or num_rows_of_cps < 3\
-            or num_cp_per_row < 3: #    
+            or num_rows_of_cps < 5\
+            or num_cp_per_row < 5: #    
         # if np.sum(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_u_multiplicities'][1:-1]) \
         #     or np.sum(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1]) != len(parsed_info_dict[f'surf{i}_v_multiplicities'][1:-1])\
         #     or np.any(cntrl_pts.shape[0] <= 8)\

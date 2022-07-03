@@ -105,7 +105,7 @@ class ShellMesh(Mesh):
 
         return pointset
 
-    def merge_OML(self, geo, merged_OML_relationship_list, plot = False):
+    def merge_OML(self, geo, merged_OML_relationship_list, num, plot = False):
         OML_ctrl_pointset_list = []
         for merged_list in merged_OML_relationship_list:
             print(merged_list)
@@ -145,89 +145,113 @@ class ShellMesh(Mesh):
             intersection_bool = (B[:, None] == A).all(-1).any(1)
             intersection_points = points1[intersection_bool]    
             
+            print('num_points0',num_points0,'num_points1',num_points1,'intersection_points',len(intersection_points))
             if len(intersection_points) == 0:  
                 print('Warning1')
                 A = np.around(points0/1000, decimals=3)#decimals=8
                 B = np.around(points1/1000, decimals=3)#decimals=8
                 intersection_bool = (B[:, None] == A).all(-1).any(1)
                 intersection_points = points1[intersection_bool] 
-                print('points0, points1,intersection_points',len(points0), len(points1),len(intersection_points)) 
+                print('points0, points1, intersection_points',len(points0), len(points1),len(intersection_points)) 
                 if len(intersection_points) == 0:
-                    print('Warning10')               
-            
-            points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
-            #print('num_points0',num_points0,'num_points1',num_points1)
-            point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points0)
-            if len(point_indices)%len(intersection_points) ==0:
-                output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
-                output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
-            else: 
-                print('Warning0') 
-                A = np.around(points0/1000, decimals=3)#decimals=8
-                B = np.around(points1/1000, decimals=3)#decimals=8
-                intersection_bool = (B[:, None] == A).all(-1).any(1)
-                intersection_points = points1[intersection_bool] 
-                print('points0, points1,intersection_points',len(points0), len(points1),len(intersection_points))
-                
+                    print('WarningWarningWarning10')    
+
+
+
+            if len(intersection_points) != 0:
                 points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
                 point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points0)
-                output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
-                if len(point_indices)%len(intersection_points) ==0:
+                if len(point_indices)%len(intersection_points) ==0 and len(intersection_points)==num:
+                    output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
                     output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
-                else:
-                    print('Warning00')   
-                    indices_p1 = list(np.arange(10) + 110 + 231)
+                else: 
+                    print('Warning0') 
+                    A = np.around(points0/1000, decimals=3)#decimals=8
+                    B = np.around(points1/1000, decimals=3)#decimals=8
+                    intersection_bool = (B[:, None] == A).all(-1).any(1)
+                    intersection_points = points1[intersection_bool] 
+                    print('points0, points1,intersection_points',len(points0), len(points1),len(intersection_points))
                     
-                    output_point_indices_deduced= []
-                    for i in range(len(points0)+len(points1)-11):
-                        if i not in indices_p1:
-                            output_point_indices_deduced.append(i)
-                    print('points0, points1,intersection_points, output_point_indices_deduced',len(points0), len(points1),len(intersection_points), len(output_point_indices_deduced))
-                    #print(,indices_p1)
-                    output_point_indices_deduced = np.array(output_point_indices_deduced)  
-                    print('id', output_pointset.pointset_id)      
-                    output_pointset = geo.extract_pointset(output_pointset, output_point_indices_deduced, len(output_point_indices_deduced))
-                    output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3])
-                    print('id', output_pointset.pointset_id)
-                    # # print(output_pointset.shape)
-                    # if pointset1.pointset_id == 382:
-                    #     geo.assemble(pointset = output_pointset)
-                    #     points = geo.evaluate(pointset = output_pointset)
-                    #     vd_points0 = vedo.Points(points0, r=10, c='red',alpha=0.8)
-                    #     vd_points1 = vedo.Points(points1, r=15, c='green',alpha=0.5) 
-                    #     vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) #cntrl_pts_vector[output_point_indices_deduced,:]
-                    #     vd_test = vedo.Plotter(axes=1)
-                    #     vd_test.show(vd_points0,vd_points1,vd_points2, 'Test1', viewup="z", interactive=True) 
-                    #     exit()         
-              
-            geo.assemble(pointset = output_pointset)
-            geo.evaluate(pointset = output_pointset)
-            
-            # print(points.shape)
-            # vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) 
-            # vd_test = vedo.Plotter(axes=0)
-            # vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) 
+                    points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
+                    point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points0)
+                    output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
+                    if len(point_indices)%len(intersection_points) ==0 and len(intersection_points)!=1:
+                        output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
+                    else:
+                        print('WarningWarningWarning00')           
 
-            if len(merged_OML_relationship_list) == 1:# 
+                geo.assemble(pointset = output_pointset)
+                geo.evaluate(pointset = output_pointset)
+                
+                # print(points.shape)
+                # vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) 
+                # vd_test = vedo.Plotter(axes=0)
+                # vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) 
+
+
+                if len(merged_OML_relationship_list) == 1:# 
+                    merged_ctrl_pointset = geo.fit_bspline_ctrl_pointsets([output_pointset])#, plot = True
+                    merged_ctrl_pointset = merged_ctrl_pointset[0]
+                    merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2]  
+                    OML_ctrl_pointset_list.append(merged_ctrl_pointset)
+                else:
+                    merged_ctrl_pointset = output_pointset
+                    merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2] 
+                    merged_ctrl_pointset.shape = np.append(len(point_indices),3)
+                    OML_ctrl_pointset_list.append(merged_ctrl_pointset)
+            else:
+                geo.assemble(pointset = output_pointset)
+                entity_points_be_fitted = geo.evaluate(pointset = output_pointset)
+
+                ind = np.argsort(entity_points_be_fitted[:,0])
+                points_sorted = entity_points_be_fitted[ind]
+                num_points_u = int(output_pointset.shape[0]/num)
+                num_points_v = num 
+                change_matrix0 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))                   
+                for i in range(num_points_u*num_points_v):
+                    change_matrix0[i,ind[i]] = 1
+                for i in np.arange(0, num_points_u*num_points_v, num_points_v):
+                    points_sub = points_sorted[i:i+num_points_v,:]
+                    ind_sub = np.argsort(points_sub[:,1])
+                    points_sub_sorted = points_sub[ind_sub]
+                    points_sorted[i:i+num_points_v,:] = points_sub_sorted
+                    ind[i:i+num_points_v] = ind_sub+i
+                points_change_0 = np.matmul(change_matrix0, entity_points_be_fitted)
+                change_matrix1 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))
+                for i in range(num_points_u*num_points_v):
+                    change_matrix1[i,ind[i]] = 1
+                change_matrix = np.matmul(change_matrix1,change_matrix0)
+                points_change = np.matmul(change_matrix1,points_change_0)  
+                print(type(relative_map),relative_map.shape, change_matrix.shape)              
+                relative_map = np.matmul(change_matrix, relative_map.todense())
+                output_pointset.relative_map = sps.csc_matrix(relative_map)
+                geo.assemble(pointset = output_pointset)
+                entity_points_be_fitted2 = geo.evaluate(pointset = output_pointset)  
+
+                output_pointset.shape = np.array([int(output_pointset.shape[0]/num),num,3])            
                 merged_ctrl_pointset = geo.fit_bspline_ctrl_pointsets([output_pointset])#, plot = True
                 merged_ctrl_pointset = merged_ctrl_pointset[0]
                 merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2]  
-                OML_ctrl_pointset_list.append(merged_ctrl_pointset)
-            else:
-                merged_ctrl_pointset = output_pointset
-                merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2] 
-                merged_ctrl_pointset.shape = np.append(len(point_indices),3)
-                OML_ctrl_pointset_list.append(merged_ctrl_pointset)
+                OML_ctrl_pointset_list.append(merged_ctrl_pointset)  
 
-            #print(merged_list[2],len(intersection_bool), len(intersection_points))
+            # #print(merged_list[2],len(intersection_bool), len(intersection_points))
+            # if plot:
+            #     #print(len(points0), len(points1),len(intersection_points),len(points))
+            #     self.vd_points000 = vedo.Points(np.unique(points0, axis=0), r=15, c='Chocolate',alpha=0.8)
+            #     self.vd_points111 = vedo.Points(np.unique(points1, axis=0), r=15, c='darkgreen',alpha=0.8) 
+            #     self.vd_points222 = vedo.Points(intersection_points, r=20, c='grey',alpha=1.0) #cntrl_pts_vector
+            #     # vd_test = vedo.Plotter(axes=1)
+            #     # vd_test.show(vd_points0,vd_points1,vd_points2, 'Test1', viewup="z", interactive=False)
             if plot:
                 #print(len(points0), len(points1),len(intersection_points),len(points))
-                self.vd_points000 = vedo.Points(np.unique(points0, axis=0), r=15, c='Chocolate',alpha=0.8)
-                self.vd_points111 = vedo.Points(np.unique(points1, axis=0), r=15, c='darkgreen',alpha=0.8) 
-                self.vd_points222 = vedo.Points(intersection_points, r=20, c='grey',alpha=1.0) #cntrl_pts_vector
-                # vd_test = vedo.Plotter(axes=1)
-                # vd_test.show(vd_points0,vd_points1,vd_points2, 'Test1', viewup="z", interactive=False)
-        
+                vd_points0 = vedo.Points(points0, r=15, c='red',alpha=0.8)
+                vd_points1 = vedo.Points(points1, r=20, c='green',alpha=0.5) 
+                geo.assemble(pointset = merged_ctrl_pointset)
+                merged_pts = geo.evaluate(pointset = merged_ctrl_pointset)    
+                vd_points2 = vedo.Points(merged_pts, r=20, c='blue',alpha=0.3)#entity_points_be_fitted2            
+                vd_test = vedo.Plotter(axes=1)
+                vd_test.show(vd_points0, vd_points1, vd_points2, 'Testtt', viewup="z", interactive=True)                 
+                exit()        
             # if plot:
             #     #print(len(points0), len(points1),len(intersection_points))
             #     geo.assemble(pointset = merged_ctrl_pointset)
@@ -258,6 +282,33 @@ class ShellMesh(Mesh):
                 #exit()
         return OML_ctrl_pointset_list
 
+    def sequence_points(self, geo, pointset, axis, num_points_u, num_points_v, plot = False):
+        geo.assemble(pointset = pointset)
+        entity_points_be_fitted = geo.evaluate(pointset = pointset)
+
+        ind = np.argsort(entity_points_be_fitted[:,0])
+        points_sorted = entity_points_be_fitted[ind]
+        change_matrix0 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))                   
+        for i in range(num_points_u*num_points_v):
+            change_matrix0[i,ind[i]] = 1
+        for i in np.arange(0, num_points_u*num_points_v, num_points_v):
+            points_sub = points_sorted[i:i+num_points_v,:]
+            ind_sub = np.argsort(points_sub[:,1])
+            points_sub_sorted = points_sub[ind_sub]
+            points_sorted[i:i+num_points_v,:] = points_sub_sorted
+            ind[i:i+num_points_v] = ind_sub+i
+        points_change_0 = np.matmul(change_matrix0, entity_points_be_fitted)
+        change_matrix1 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))
+        for i in range(num_points_u*num_points_v):
+            change_matrix1[i,ind[i]] = 1
+        change_matrix = np.matmul(change_matrix1,change_matrix0)
+        points_change = np.matmul(change_matrix1,points_change_0)  
+        print(type(relative_map),relative_map.shape, change_matrix.shape)              
+        relative_map = np.matmul(change_matrix, relative_map.todense())
+        pointset.relative_map = sps.csc_matrix(relative_map)
+        geo.assemble(pointset = pointset)
+        entity_points_be_fitted2 = geo.evaluate(pointset = pointset)  
+
     def identify_intersection_list(self, geo, intersection_list, plot = False):
         ''' Assume that all intersections between structural features are between 
         an edge of one feature and a surface of another feature, 
@@ -281,6 +332,11 @@ class ShellMesh(Mesh):
             self.num_of_nodes += len(u0_v0_vec)    
             basis_matrix = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec)
             test_points4 = basis_matrix.dot(pointset_ini.physical_coordinates)
+            # if plot:
+            #     vd_points1 = vedo.Points(test_points4, r=15, c='red',alpha=0.8)
+            #     vd_test = vedo.Plotter(axes=1)
+            #     vd_test.show(vd_points1, 'Test33', viewup="z", interactive=True)  
+            #     exit()           
             constrained_edges = np.empty((0,2),dtype = int)
             indices_u0 = num_points_v0 * np.arange(num_points_u0)  
             indices_v0 = np.arange(num_points_v0)
@@ -337,8 +393,8 @@ class ShellMesh(Mesh):
         connectivity_check = np.copy(B['triangles'])
     
         if plot:
-            # tr.compare(plt, A, B)         
-            # plt.show(block = False) 
+            tr.compare(plt, A, B)         
+            plt.show(block = False) 
             # plt.show()
             # exit()
             test_points1 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
@@ -351,10 +407,12 @@ class ShellMesh(Mesh):
 
             vd_points1 = vedo.Points(test_points1, r=15, c='red',alpha=0.8)  
             vd_points2 = vedo.Points(test_points2, r=15, c='blue', alpha=0.8)  #1379, 1340
-            vd_points3 = vedo.Points(test_points3, r=20, c='violet', alpha=1.0)
+            #vd_points3 = vedo.Points(test_points3, r=20, c='violet', alpha=1.0)
             vd_points4 = vedo.Points(test_points4, r=15, c='red',alpha=0.8)
             vd_points5 = vedo.Points(test_points3, r=15, c='blue',alpha=0.8)
-            
+
+            # mesh0 = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
+            # mesh0.backColor().lineColor('green').lineWidth(0.3)         
             mesh1 = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
             mesh1.backColor().lineColor('green').lineWidth(0)            
 
@@ -364,17 +422,18 @@ class ShellMesh(Mesh):
             mesh4 = vedo.Mesh([test_points4, connectivity_check], alpha=0.3, c='red')
             mesh4.lineWidth(0)     
 
-            vd_test = vedo.Plotter(axes=0)
-            vd_test.show(vd_points2,vd_points4,vd_points5, mesh2, mesh4,'Test0', viewup="z", interactive=True) 
-            exit()
-            # vd_test = vedo.Plotter(axes=0
+            # vd_test = vedo.Plotter(axes=0)
+            # vd_test.show(vd_points2,vd_points4,vd_points5, mesh2, mesh4,'Test0', viewup="z", interactive=True) 
+            # exit()
+
+            # vd_test = vedo.Plotter(axes=0)
             # vd_test.show(vd_points5,vd_points2,self.vd_points111,self.vd_points222,self.vd_points000, 'Test1', viewup="z", interactive=False)                       
             # vd_test = vedo.Plotter(axes=0)
             # vd_points6 = vedo.Points(test_points2, r=15, c='blue', alpha=0.5)
             # vd_points7 = vedo.Points(test_points1, r=15, c='red',alpha=0.8) 
             # vd_test.show(mesh, vd_points7, vd_points6,vd_points3, 'Test2', viewup="z", interactive=False)             
-            # vd_test = vedo.Plotter(axes=0)
-            # vd_test.show(vd_points1, vd_points2,vd_points3, 'Test3', viewup="z", interactive=True) #mesh, 
+            vd_test = vedo.Plotter(axes=1)
+            vd_test.show(mesh0,vd_points1, vd_points2, 'Test333', viewup="z", interactive=True) # 
             
    
     def identify_intersection(self, u0_v0_vec, pointset0, pointset1, num_points_u0, num_points_v0, num_points_u1, num_points_v1, edge_location, relationship):
@@ -493,7 +552,9 @@ class ShellMesh(Mesh):
             print('T', pointset1.name) 
             u0_v0_vec_ini = np.copy(u0_v0_vec)
             pointset1_points, indices_pointset1 = self.construct_constrained_triangulation(pointset1, num_points_u = num_points_u1, num_points_v = num_points_v1, constrained_edge_location = edge_location)        
+            
             indices_pointset1 = list(indices_pointset1)  
+            #print('indices_pointset1', indices_pointset1)
             num_points = len(pointset1_points)            
             constrained_u0_v0_vec = self.project_points(pointset1_points, num_points, pointset0)
             starting_pointset1_index = 0
@@ -646,6 +707,7 @@ class ShellMesh(Mesh):
         num_control_points_v_fitted = pointset1.shape[1]
         num_points_u_fitted = num_points_u
         num_points_v_fitted = num_points_v
+
         print('num_control_points_u_fitted', num_control_points_u_fitted, 'num_control_points_v_fitted',num_control_points_v_fitted, 'num_points_u_fitted',num_points_u_fitted, 'num_points_v_fitted',num_points_v_fitted)
         nnz = num_points_u_fitted * num_points_v_fitted * order_u_fitted * order_v_fitted
         data = np.zeros(nnz)
@@ -732,7 +794,7 @@ class ShellMesh(Mesh):
             vd_points1 = vedo.Points(points, r=15, c='red',alpha=0.5)
             vd_test = vedo.Plotter(axes=1)
             vd_test.show(vd_points0, vd_points1, 'Test', viewup="z", interactive=True)
-            exit()
+            #exit()
         return points, indices
 
     def project_points(self, points, num_points, pointset0):
@@ -793,10 +855,10 @@ class ShellMesh(Mesh):
         return uv_vec
  
 
-    def discritize_ctrl_pointset(self, ctrl_pointset, uv_vec, order_u_fitted = 4, order_v_fitted = 4):
+    def discritize_ctrl_pointset(self, ctrl_pointset, uv_vec, order_u_fitted = 4, order_v_fitted = 4):#order_u_fitted = 4, order_v_fitted = 4
         num_control_points_u_fitted = ctrl_pointset.shape[0]
         num_control_points_v_fitted = ctrl_pointset.shape[1]
-        print('num_control_points_u_fitted,num_control_points_v_fitted',num_control_points_u_fitted,num_control_points_v_fitted)
+        #print('num_control_points_u_fitted,num_control_points_v_fitted',num_control_points_u_fitted,num_control_points_v_fitted)
         nnz = len(uv_vec) * order_u_fitted * order_v_fitted
         data = np.zeros(nnz)
         row_indices = np.zeros(nnz, np.int32)

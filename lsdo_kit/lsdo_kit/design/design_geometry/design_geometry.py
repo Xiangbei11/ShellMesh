@@ -83,28 +83,37 @@ class DesignGeometry:
         if plot == True: #There are only 239 colors in vedo.colors.colors dictionary. If number of bspline surfaces is larger than 238*2, reduce the index of the color agian
             vps_ini = []
             vps = []
-            for i in range(len(self.input_bspline_entity_dict.values())):  
-                if i < 58 or i > 105:# 
-                    ''' 10-57: i < 10 or i > 57
-                        58-101: i < 58 or i > 101
-                        102:
-                    '''
-                    pass
-                else: 
+            for i in range(len(self.input_bspline_entity_dict.values())): 
+         
+                if  i in [157,195] or (i>=10 and i<=57) or (i>=58 and i<=102):#  or np.arange(225,245,2)#[225,235,239,241]   or (i==4)  i in [157] or (i>=10 and i<=57) or (i>=58 and i<=101)
+                    ''' 10-57: i>=10 and i=<57
+                        58-102: i < 58 or i > 101
+                        103-156: i < 102 or i > 156
+                        157,161,165,169
+                        169,175,183: 175 179 reduce last two rows#179
+                        183,189,195
+                        195,203,211
+                        211,215,225
+                        225,229: 229 reduce first three two rows
+                        229,239,241,243'''
                     print(i)     
                     if i > 238:
-                        color = list(colors.colors.values())[i-239]#239
+                        color = list(colors.colors.values())[i-239]#244
                     else:
                         color = list(colors.colors.values())[i]
                     surf_ini = list(self.initial_input_bspline_entity_dict.values())[i] 
                     vps_ini.append(Points(surf_ini.control_points, r=8, c = color))
                     surf = list(self.input_bspline_entity_dict.values())[i]
                     vps.append(Points(surf.control_points, r=8, c = color))
+
             print()
             vp_init_out = Plotter()
             vp_init_out.show(vps_ini, 'Initial control points', axes=1, viewup="z", interactive = False)
             vp_init = Plotter()
-            vp_init.show(vps, 'Interpolated control points', axes=1, viewup="z", interactive = False)       
+            vp_init.show(vps, 'Interpolated control points', axes=1, viewup="z", interactive = False)  #, vps_test
+            # vd = vedo.Plotter()
+            # vd.show(interactive = True) 
+            # exit()    
 
 
     def project_points(self, points_to_be_projected, projection_targets_names=[], projection_direction=np.array([0., 0., 0.]), offset=np.array([0., 0., 0.]), plot=False):
@@ -680,6 +689,10 @@ class DesignGeometry:
                 start_index = pointset_fitted.output_starting_ind
                 end_index = start_index + np.cumprod(component_shape)[-2]
                 entity_points_be_fitted = output_vec[start_index:end_index]
+            unique_entity_points_be_fitted = np.unique(entity_points_be_fitted, axis=0)
+            #print('unique_entity_points_be_fitted',len(entity_points_be_fitted),len(unique_entity_points_be_fitted))
+            if len(entity_points_be_fitted) != len(unique_entity_points_be_fitted):
+                print('Warning unique')
             if len(component_shape[:-1]) == 0:  # is point  
                 print('fitting points has not been implemented yet')
                 pass        #is point
@@ -716,44 +729,16 @@ class DesignGeometry:
                 a = np.matmul(basis0.toarray().T, basis0.toarray())
                 if np.linalg.det(a) == 0:
                     print('TODO: lstsq')
-                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0, 'num_control_points_u_fitted', num_control_points_u_fitted, 'num_control_points_v_fitted',num_control_points_v_fitted, 'num_points_u_fitted',num_points_u_fitted, 'num_points_v_fitted',num_points_v_fitted)                                             
-                    if component_shape[0]<100:
-                        ind = np.argsort(entity_points_be_fitted[:,1])
-                    else:
-                        ind = np.argsort(entity_points_be_fitted[:,0])
-                    points_sorted = entity_points_be_fitted[ind]
-                    num_points_u = component_shape[0]
-                    num_points_v = component_shape[1] 
-
-                    change_matrix0 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))
-                    for i in range(num_points_u*num_points_v):
-                        change_matrix0[i,ind[i]] = 1
-                    
-                    for i in np.arange(0, num_points_u*num_points_v, num_points_v):
-                        points_sub = points_sorted[i:i+num_points_v,:]
-                        ind_sub = np.argsort(points_sub[:,2])
-                        points_sub_sorted = points_sub[ind_sub]
-                        points_sorted[i:i+num_points_v,:] = points_sub_sorted
-                        ind[i:i+num_points_v] = ind_sub+i
-
-                    points_change = np.matmul(change_matrix0, entity_points_be_fitted)
-                    change_matrix1 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))
-                    for i in range(num_points_u*num_points_v):
-                        change_matrix1[i,ind[i]] = 1
-                    points_change = np.matmul(change_matrix1, points_change)
-                    change_matrix = np.matmul(change_matrix1,change_matrix0)
-
+                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0, 'control_points_u_fitted', num_control_points_u_fitted, 'control_points_v_fitted',num_control_points_v_fitted, 'points_u_fitted',num_points_u_fitted, 'points_v_fitted',num_points_v_fitted)                                             
                     order_u_fitted = 4
                     order_v_fitted = 4
-                    #component_shape[0] - 30
-                    if component_shape[0]>100:
-                        num_control_points_u_fitted = 100
-                    else: 
-                        num_control_points_u_fitted = component_shape[0]
+                    # if component_shape[0]>300:
+                    #     num_control_points_u_fitted = int(component_shape[0]/3)#320: cannot work #310: can work
+                    # else: 
+                    num_control_points_u_fitted = int(component_shape[0]/3)
                     num_control_points_v_fitted = component_shape[1]
                     num_points_u_fitted = component_shape[0]
                     num_points_v_fitted = component_shape[1]
-
                     nnz = num_points_u_fitted * num_points_v_fitted * order_u_fitted * order_v_fitted
                     data = np.zeros(nnz)
                     row_indices = np.zeros(nnz, np.int32)
@@ -774,18 +759,41 @@ class DesignGeometry:
                         shape=(num_points_u_fitted * num_points_v_fitted, num_control_points_u_fitted * num_control_points_v_fitted),
                     )
                     a = np.matmul(basis0.toarray().T, basis0.toarray()) 
-                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0, 'num_control_points_u_fitted', num_control_points_u_fitted, 'num_control_points_v_fitted',num_control_points_v_fitted, 'num_points_u_fitted',num_points_u_fitted, 'num_points_v_fitted',num_points_v_fitted)
-                    #cps_fitted = np.linalg.solve(a, np.matmul(basis0.toarray().T, points_change)) 
-                    
+                    print('np.linalg.det(a) == 0', np.linalg.det(a) == 0, 'control_points_u_fitted', num_control_points_u_fitted, 'control_points_v_fitted',num_control_points_v_fitted, 'points_u_fitted',num_points_u_fitted, 'points_v_fitted',num_points_v_fitted)
                     relative_map = np.matmul(np.linalg.inv(a),basis0.toarray().T)
-                    relative_map = np.matmul(relative_map,change_matrix)
-                    indices_u0 = num_points_v * np.arange(num_points_u)  
-                    indices_v0 = np.arange(num_points_v)
-                    indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1
-                    indices_v1 = np.arange(num_points_v)+ (num_points_u*num_points_v) - num_points_v 
-                    indices_vu =  np.arange(num_points_u)
+
                     # if component_shape[0]<100:
-                    #     vp_points0 = vedo.Points(points_sorted[indices_u1,:], r=10, c='red',alpha=0.8)#
+                    #     ind = np.argsort(entity_points_be_fitted[:,1])
+                    # else:
+
+                    ind = np.argsort(entity_points_be_fitted[:,0])
+                    points_sorted = entity_points_be_fitted[ind]
+                    num_points_u = component_shape[0]
+                    num_points_v = component_shape[1] 
+                    change_matrix0 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))                   
+                    for i in range(num_points_u*num_points_v):
+                        change_matrix0[i,ind[i]] = 1
+                    for i in np.arange(0, num_points_u*num_points_v, num_points_v):
+                        points_sub = points_sorted[i:i+num_points_v,:]
+                        ind_sub = np.argsort(points_sub[:,2])
+                        points_sub_sorted = points_sub[ind_sub]
+                        points_sorted[i:i+num_points_v,:] = points_sub_sorted
+                        ind[i:i+num_points_v] = ind_sub+i
+                    points_change_0 = np.matmul(change_matrix0, entity_points_be_fitted)
+                    change_matrix1 = np.zeros((num_points_u*num_points_v, num_points_u*num_points_v))
+                    for i in range(num_points_u*num_points_v):
+                        change_matrix1[i,ind[i]] = 1
+                    change_matrix = np.matmul(change_matrix1,change_matrix0)
+                    points_change = np.matmul(change_matrix1,points_change_0)                
+                    relative_map = np.matmul(relative_map,change_matrix)
+                    
+                    # indices_u0 = num_points_v * np.arange(num_points_u)  
+                    # indices_v0 = np.arange(num_points_v)
+                    # indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1
+                    # indices_v1 = np.arange(num_points_v)+ (num_points_u*num_points_v) - num_points_v 
+                    # indices_vu =  np.arange(num_points_u)         
+                    # if component_shape[0] == 146:
+                    #     vp_points0 = vedo.Points(points_change[indices_u1,:], r=10, c='red',alpha=0.8)#
                     #     vp_points1 = vedo.Points(entity_points_be_fitted, r=15, c='green',alpha=0.3)
                     #     vp_test = Plotter(axes=1)
                     #     vp_test.show(vp_points0,vp_points1, 'Test', viewup="z", interactive=True)  
