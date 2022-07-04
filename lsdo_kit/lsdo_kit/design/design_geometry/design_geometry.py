@@ -85,7 +85,7 @@ class DesignGeometry:
             vps = []
             for i in range(len(self.input_bspline_entity_dict.values())): 
          
-                if  (i>=10 and i<=57) or (i>=58 and i<=102) or (i>=111 and i<=157 and i !=125 and i!=123):#  or np.arange(225,245,2)#[225,235,239,241]   or (i==4)  i in [157] or (i>=10 and i<=57) or (i>=58 and i<=101)
+                if  (i>=10 and i<=57) or (i>=58 and i<=102) or (i==111):#  or np.arange(225,245,2)#[225,235,239,241]   or (i==4)  i in [157] or (i>=10 and i<=57) or (i>=58 and i<=101)
                     ''' 10-57: i>=10 and i=<57
                         58-102: i < 58 or i > 101
                         103-156: i < 102 or i > 156
@@ -110,7 +110,7 @@ class DesignGeometry:
             vp_init_out = Plotter()
             vp_init_out.show(vps_ini, 'Initial control points', axes=1, viewup="z", interactive = False)
             vp_init = Plotter()
-            vp_init.show(vps, 'Interpolated control points', axes=1, viewup="z", interactive = False)  #, vps_test
+            vp_init.show(vps, 'Interpolated control points', axes=1, viewup="z", interactive = False)  
             # vd = vedo.Plotter()
             # vd.show(interactive = True) 
             # exit()    

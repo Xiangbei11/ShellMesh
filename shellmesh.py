@@ -105,7 +105,7 @@ class ShellMesh(Mesh):
 
         return pointset
 
-    def merge_OML(self, geo, merged_OML_relationship_list, num, plot = False):
+    def merge_OML(self, geo, merged_OML_relationship_list, plot = False):
         OML_ctrl_pointset_list = []
         for merged_list in merged_OML_relationship_list:
             print(merged_list)
@@ -140,34 +140,32 @@ class ShellMesh(Mesh):
             geo.current_id += 1
             geo.current_pointset_pts += np.cumprod(output_pointset.shape)[-2]
 
-            A = np.around(points0, decimals=3)#decimals=8
-            B = np.around(points1, decimals=3)#decimals=8
+            A = np.around(points0, decimals=8)#decimals=8
+            B = np.around(points1, decimals=8)#decimals=8
             intersection_bool = (B[:, None] == A).all(-1).any(1)
             intersection_points = points1[intersection_bool]    
             
             print('num_points0',num_points0,'num_points1',num_points1,'intersection_points',len(intersection_points))
             if len(intersection_points) == 0:  
                 print('Warning1')
-                A = np.around(points0/1000, decimals=3)#decimals=8
-                B = np.around(points1/1000, decimals=3)#decimals=8
+                A = np.around(points0/1000, decimals=3)
+                B = np.around(points1/1000, decimals=3)
                 intersection_bool = (B[:, None] == A).all(-1).any(1)
                 intersection_points = points1[intersection_bool] 
                 print('points0, points1, intersection_points',len(points0), len(points1),len(intersection_points)) 
                 if len(intersection_points) == 0:
-                    print('WarningWarningWarning10')    
-
-
+                    print('WarningWarning10')    
 
             if len(intersection_points) != 0:
                 points1_reduced_indices = np.where(np.invert((intersection_bool)))[0]
                 point_indices = np.append(np.arange(num_points0), points1_reduced_indices+num_points0)
-                if len(point_indices)%len(intersection_points) ==0 and len(intersection_points)==num:
+                if len(point_indices)%len(intersection_points) ==0:
                     output_pointset = geo.extract_pointset(output_pointset, point_indices, len(point_indices))
                     output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
                 else: 
                     print('Warning0') 
-                    A = np.around(points0/1000, decimals=3)#decimals=8
-                    B = np.around(points1/1000, decimals=3)#decimals=8
+                    A = np.around(points0/1000, decimals=3)
+                    B = np.around(points1/1000, decimals=3)
                     intersection_bool = (B[:, None] == A).all(-1).any(1)
                     intersection_points = points1[intersection_bool] 
                     print('points0, points1,intersection_points',len(points0), len(points1),len(intersection_points))
@@ -178,16 +176,10 @@ class ShellMesh(Mesh):
                     if len(point_indices)%len(intersection_points) ==0 and len(intersection_points)!=1:
                         output_pointset.shape = np.array([len(point_indices)//len(intersection_points), len(intersection_points), 3]) 
                     else:
-                        print('WarningWarningWarning00')           
+                        print('WarningWarning00')           
 
                 geo.assemble(pointset = output_pointset)
                 geo.evaluate(pointset = output_pointset)
-                
-                # print(points.shape)
-                # vd_points2 = vedo.Points(points, r=20, c='blue',alpha=0.3) 
-                # vd_test = vedo.Plotter(axes=0)
-                # vd_test.show(vd_points2, 'Test', viewup="z", interactive=True) 
-
 
                 if len(merged_OML_relationship_list) == 1:# 
                     merged_ctrl_pointset = geo.fit_bspline_ctrl_pointsets([output_pointset])#, plot = True
@@ -200,59 +192,17 @@ class ShellMesh(Mesh):
                     merged_ctrl_pointset.shape = np.append(len(point_indices),3)
                     OML_ctrl_pointset_list.append(merged_ctrl_pointset)
             else:
-                self.sequence_points(geo, output_pointset, [0,1], int(output_pointset.shape[0]/num), num, plot = False) 
-                output_pointset.shape = np.array([int(output_pointset.shape[0]/num),num,3])            
-                merged_ctrl_pointset = geo.fit_bspline_ctrl_pointsets([output_pointset])#, plot = True
-                merged_ctrl_pointset = merged_ctrl_pointset[0]
-                merged_ctrl_pointset.name = 'ctrl_pts_' + merged_list[2]  
-                OML_ctrl_pointset_list.append(merged_ctrl_pointset)  
+                print('WarningWarningWarning10')  
 
-            # #print(merged_list[2],len(intersection_bool), len(intersection_points))
-            # if plot:
-            #     #print(len(points0), len(points1),len(intersection_points),len(points))
-            #     self.vd_points000 = vedo.Points(np.unique(points0, axis=0), r=15, c='Chocolate',alpha=0.8)
-            #     self.vd_points111 = vedo.Points(np.unique(points1, axis=0), r=15, c='darkgreen',alpha=0.8) 
-            #     self.vd_points222 = vedo.Points(intersection_points, r=20, c='grey',alpha=1.0) #cntrl_pts_vector
-            #     # vd_test = vedo.Plotter(axes=1)
-            #     # vd_test.show(vd_points0,vd_points1,vd_points2, 'Test1', viewup="z", interactive=False)
             if plot:
                 #print(len(points0), len(points1),len(intersection_points),len(points))
                 vd_points0 = vedo.Points(points0, r=15, c='red',alpha=0.8)
                 vd_points1 = vedo.Points(points1, r=20, c='green',alpha=0.5) 
                 geo.assemble(pointset = merged_ctrl_pointset)
                 merged_pts = geo.evaluate(pointset = merged_ctrl_pointset)    
-                vd_points2 = vedo.Points(merged_pts, r=20, c='blue',alpha=0.3)#entity_points_be_fitted2            
+                vd_points2 = vedo.Points(merged_pts, r=20, c='blue',alpha=0.3)      
                 vd_test = vedo.Plotter(axes=1)
-                vd_test.show(vd_points0, vd_points1, vd_points2, 'Testtt', viewup="z", interactive=True)                 
-                exit()        
-            # if plot:
-            #     #print(len(points0), len(points1),len(intersection_points))
-            #     geo.assemble(pointset = merged_ctrl_pointset)
-            #     cntrl_pts_vector = geo.evaluate(pointset = merged_ctrl_pointset)
-
-            #     # num_points_u0, num_points_v0  = 65,40       
-            #     # u0_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u0), np.ones(num_points_v0)).flatten()
-            #     # v0_vec = np.einsum('i,j->ij', np.ones(num_points_u0), np.linspace(0., 1., num_points_v0)).flatten()            
-            #     # u0_v0_vec = np.vstack((u0_vec, v0_vec)).T
-            #     # basis_matrix = self.discritize_ctrl_pointset(merged_ctrl_pointset,uv_vec = u0_v0_vec)
-            #     # points = basis_matrix.dot(cntrl_pts_vector)
-
-            #     # vd_points0 = vedo.Points(points0, r=10, c='red',alpha=0.8)
-            #     # vd_points1 = vedo.Points(points1, r=15, c='green',alpha=0.5) 
-                
-            #     # num_points_u = merged_ctrl_pointset.shape[0]
-            #     # num_points_v = merged_ctrl_pointset.shape[1]
-            #     # indices_u0 = num_points_v * np.arange(num_points_u)  
-            #     # indices_v0 = np.arange(num_points_v)
-            #     # indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1
-            #     # indices_v1 = np.arange(num_points_v)+ (num_points_u*num_points_v) - num_points_v 
-            #     # indices_vu =  np.arange(150)
-
-            #     #vp_points3 = vedo.Points(points, r=15, c='red',alpha=0.8)
-            #     vd_points2 = vedo.Points(cntrl_pts_vector, r=20, c='blue',alpha=0.3) #cntrl_pts_vector
-            #     # vd_test = vedo.Plotter(axes=1)
-            #     # vd_test.show(vd_points2, 'Test', viewup="z", interactive=False) 
-                #exit()
+                vd_test.show(vd_points0, vd_points1, vd_points2, 'Testtt', viewup="z", interactive=True)                         
         return OML_ctrl_pointset_list
 
     def sequence_points(self, geo, pointset, axis, num_points_u, num_points_v, plot = False):
@@ -283,7 +233,7 @@ class ShellMesh(Mesh):
         entity_points_be_fitted2 = geo.evaluate(pointset = pointset)  
         if plot:
             indices_u1 = num_points_v * np.arange(num_points_u)+num_points_v-1       
-            vp_points0 = vedo.Points(entity_points_be_fitted2[indices_u1,:], r=10, c='red',alpha=0.8)#
+            vp_points0 = vedo.Points(entity_points_be_fitted2[indices_u1,:], r=10, c='red',alpha=0.8)
             vp_points1 = vedo.Points(entity_points_be_fitted, r=15, c='green',alpha=0.3)
             vp_test = Plotter(axes=1)
             vp_test.show(vp_points0,vp_points1, 'Test', viewup="z", interactive=False) 
@@ -311,12 +261,11 @@ class ShellMesh(Mesh):
             self.num_of_members += 1
             self.num_of_nodes += len(u0_v0_vec)    
             basis_matrix = self.discritize_ctrl_pointset(pointset_ini, uv_vec = u0_v0_vec)
-            test_points4 = basis_matrix.dot(pointset_ini.physical_coordinates)
-            # if plot:
-            #     vd_points1 = vedo.Points(test_points4, r=15, c='red',alpha=0.8)
-            #     vd_test = vedo.Plotter(axes=1)
-            #     vd_test.show(vd_points1, 'Test33', viewup="z", interactive=True)  
-            #     exit()           
+            
+            if plot:
+                test_points_ini = basis_matrix.dot(pointset_ini.physical_coordinates)
+                vd_points_ini = vedo.Points(test_points_ini, r=15, c='red',alpha=0.8)
+          
             constrained_edges = np.empty((0,2),dtype = int)
             indices_u0 = num_points_v0 * np.arange(num_points_u0)  
             indices_v0 = np.arange(num_points_v0)
@@ -368,28 +317,31 @@ class ShellMesh(Mesh):
         else:   
             pass                                          
         
-        print('000')
         A = dict(vertices=self.members_dict[pointset0.name].options['u_v_vec'], segments=self.members_dict[pointset_ini.name].options['constrained_edges'])
         B = tr.triangulate(A,'p')  
         self.members_dict[pointset_ini.name].options['tri_connectivity'] = B['triangles']
         connectivity_check = np.copy(B['triangles'])
-        print('111')
+
         if plot:
             tr.compare(plt, A, B)         
             plt.show(block = False) 
-            print('222')
             # plt.show()
             # exit()
-            test_points1 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
-            test_points2 = self.members_dict[pointset1.name].options['mapping'].dot(self.total_cntrl_pts_vector)
+            test_points0 = self.members_dict[pointset_ini.name].options['mapping'].dot(self.total_cntrl_pts_vector)
+            test_points1 = self.members_dict[pointset1.name].options['mapping'].dot(self.total_cntrl_pts_vector)
             constrained = self.members_dict[pointset_ini.name].options['constrained_node_indices']
-            test_points3 = test_points1[constrained,:]
+            test_points2 = test_points0[constrained,:]
 
-            mesh0 = vedo.Mesh([test_points1, connectivity_check], alpha=0.3)
-            mesh0.backColor().lineColor('green').lineWidth(3)  
+            mesh0 = vedo.Mesh([test_points0, connectivity_check], alpha=0.3)
+            mesh0.backColor().lineColor('green').lineWidth(0)  
+            mesh1 = vedo.Mesh([np.append(test_points2,test_points2,axis=0), self.members_dict[pointset1.name].options['tri_connectivity']], alpha=0.3, c='blue')         
+            mesh1.lineWidth(0) 
 
             vd_points1 = vedo.Points(test_points1, r=15, c='red',alpha=0.8)  
-            vd_points2 = vedo.Points(test_points2, r=15, c='blue', alpha=0.8)  #1379, 1340
+            vd_points2 = vedo.Points(test_points2, r=15, c='blue', alpha=0.8)             
+            vd_test = vedo.Plotter(axes=0)
+            vd_test.show(vd_points_ini,vd_points1,vd_points2, mesh0, mesh1,'Test0', viewup="z", interactive=True) 
+            exit()
             vd_points3 = vedo.Points(test_points3, r=20, c='violet', alpha=1.0)
             vd_points4 = vedo.Points(test_points4, r=15, c='red',alpha=0.8)
             vd_points5 = vedo.Points(test_points3, r=15, c='blue',alpha=0.8)
@@ -400,21 +352,18 @@ class ShellMesh(Mesh):
             mesh1.backColor().lineColor('green').lineWidth(0)            
 
             
-            mesh2 = vedo.Mesh([np.append(test_points2,test_points3,axis=0), self.members_dict[pointset1.name].options['tri_connectivity']], alpha=0.3, c='blue')         
-            mesh2.lineWidth(0) 
+
             mesh4 = vedo.Mesh([test_points4, connectivity_check], alpha=0.3, c='red')
             mesh4.lineWidth(0)     
 
-            # vd_test = vedo.Plotter(axes=0)
-            # vd_test.show(vd_points2,vd_points4,vd_points5, mesh2, mesh4,'Test0', viewup="z", interactive=True) 
-            # exit()
 
-            # vd_test = vedo.Plotter(axes=0)
-            # vd_test.show(vd_points5,vd_points2,self.vd_points111,self.vd_points222,self.vd_points000, 'Test1', viewup="z", interactive=False)                       
-            # vd_test = vedo.Plotter(axes=0)
-            # vd_points6 = vedo.Points(test_points2, r=15, c='blue', alpha=0.5)
-            # vd_points7 = vedo.Points(test_points1, r=15, c='red',alpha=0.8) 
-            # vd_test.show(mesh, vd_points7, vd_points6,vd_points3, 'Test2', viewup="z", interactive=False)             
+
+            vd_test = vedo.Plotter(axes=0)
+            vd_test.show(vd_points5,vd_points2,self.vd_points111,self.vd_points222,self.vd_points000, 'Test1', viewup="z", interactive=False)                       
+            vd_test = vedo.Plotter(axes=0)
+            vd_points6 = vedo.Points(test_points2, r=15, c='blue', alpha=0.5)
+            vd_points7 = vedo.Points(test_points1, r=15, c='red',alpha=0.8) 
+            vd_test.show(mesh1, vd_points7, vd_points6,vd_points3, 'Test2', viewup="z", interactive=False)             
             vd_test = vedo.Plotter(axes=1)
             vd_test.show(mesh0,vd_points1, vd_points3, 'Test333', viewup="z", interactive=True) 
             exit()# 
@@ -954,7 +903,7 @@ class ShellMesh(Mesh):
                 #itr=[1,2,3] #w4 = 0.8 26570 
                 #itr=[1,2,2,2,2,3] #w4 = 1  27240 
                 #itr=[1,2,3]  #w4 = 0.7 26486
-                itr=[3]
+                itr=[3,3,3]
                 # if memb.options['id'] ==0:#plot
                 #     mesh = vedo.Mesh([vertexCoords, m.trilist], alpha=0.3)
                 #     mesh.backColor().lineColor('green').lineWidth(3) 

@@ -26,8 +26,8 @@ for i, pointset in enumerate(OML_pointset_list):
 
 merged_OML_list = [[142, 144, 'OML_upper_wing'],
                 [141, 143, 'OML_lower_wing'],] 
-OML_ctrl_pointset_list = shell_mesh.merge_OML(geo, [merged_OML_list[0]], num=11) 
-OML_ctrl_pointset_list.append(shell_mesh.merge_OML(geo, [merged_OML_list[1]], num=11)[0]) 
+OML_ctrl_pointset_list = shell_mesh.merge_OML(geo, [merged_OML_list[0]]) 
+OML_ctrl_pointset_list.append(shell_mesh.merge_OML(geo, [merged_OML_list[1]])[0]) 
 
 vd_points2 = []
 print()
