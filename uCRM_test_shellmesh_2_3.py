@@ -23,7 +23,7 @@ OML_pointset_list = shell_mesh.extract_pointset_list_from_bspline_surface(geo, b
 for i, pointset in enumerate(OML_pointset_list):
     print(pointset.pointset_id,pointset.name)
 print()
-scale = 100
+scale = 1000
 vd0 = []
 surface_upper0 = np.empty((0,3))
 surface_lower0 = np.empty((0,3))

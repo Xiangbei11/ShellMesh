@@ -182,30 +182,43 @@ class meshopt(object):
         limit : limit for the measure of the local curvature, if weight is smaller than limit, the corresponding vertex is fixed
         '''
         dupvert = self.dupvert
-        vertlist1 = self.vertexCoords
-        vertlist = self.vertexCoords.flatten()
+        print('dupvert',dupvert)
+        vertlist = self.vertexCoords
+        vertlist_flatten = self.vertexCoords.flatten()
 
-        meshopt = pymeshopt.Pymeshopt(vertlist1,self.trilist,self.quadlist,self.w1,self.w2,self.w3)
+        meshopt = pymeshopt.Pymeshopt(vertlist,self.trilist,self.quadlist,self.w1,self.w2,self.w3)
         optprep = meshopt.computenormal()
         n = optprep.normal.flatten()
+        print('n',n.shape)
         weight = optprep.weight
         weight[weight>=limit] = 1/weight[weight>=limit]
-        print((np.where(weight<limit)[0]).shape,'fsadfasdfasfasd')
+        print('weight',weight.shape,weight)
         extraweight = np.zeros(weight.shape[0])
         extraweight[dupvert] = 1e8
         weight = weight+extraweight
         weight[weight<limit] = 1e20
         weight = np.outer(weight,np.ones(3)).flatten()
-        for i in range(num_itr):
-            
+        print('weight',weight.shape,weight)
+        for i in range(num_itr):    
             num_v = len(self.vertexCoords)
-            
             edges = meshopt.uniedges().astype(np.int32)
             num_e = len(edges)
+            print('edges',edges)
+            print('num_v',num_v,'num_e',num_e)
             row = np.outer(np.arange(num_e*3),np.ones(2)).flatten()
             col = np.linspace(edges*3,edges*3+2,num=3,axis=1).flatten()
+            print('col',np.linspace(edges*3,edges*3+2,num=3,axis=1))
             data = np.repeat(np.array([[1,-1]]),num_e*3,axis=0).flatten()
             dPdd = csc_matrix((data,(row,col)),shape=(num_e*3,num_v*3))
+            print('dPdd',np.shape(dPdd.toarray()),dPdd.toarray())
+            v0 = vertlist[edges[:,0]].flatten()
+            v1 = vertlist[edges[:,1]].flatten()
+            v = csc_matrix(v0-v1)
+            print('v', np.shape(v.toarray()))
+            b = dPdd.T.dot(v.T)
+            b = vstack((b,csc_matrix((num_v,1))))
+            b = b.toarray().reshape(num_v*4)*(-0.5)
+
             row = col = np.arange(num_v*3)
             data = np.ones(num_v*3)*w
             index = np.linspace(self.fixedvert*3,self.fixedvert*3+2,num=3).flatten().astype(np.int32)
@@ -218,31 +231,28 @@ class meshopt(object):
             A = csc_matrix((data,(row,col)),shape=(num_v,num_v*3))
             M = vstack((B,A))
             At = vstack((A.T,csc_matrix((num_v,num_v))))
-            M = hstack((M,At))
+            M = csc_matrix(hstack((M,At)))
             # print(M.toarray())
-            v0 = vertlist1[edges[:,0]].flatten()
-            v1 = vertlist1[edges[:,1]].flatten()
-            v = csc_matrix(v0-v1)
-            # print(v.toarray())
-            b = dPdd.T.dot(v.T)
-            b = vstack((b,csc_matrix((num_v,1))))
-            b = b.toarray().reshape(num_v*4)*(-0.5)
+
+
             d = scipy.sparse.linalg.splu(M)
-            d = d.solve(b)[:num_v*3]
-            print('interation '+str(i),np.linalg.norm(d))
-            vertlist = vertlist + d
-            vertlist1 = vertlist.reshape(num_v,3).astype(np.float32)
+            d = d.solve(b)
+            d = d[:num_v*3]
+            print('interation '+str(i),'normd:',np.linalg.norm(d))
+            vertlist_flatten = vertlist_flatten + d
+            vertlist = vertlist_flatten.reshape(num_v,3).astype(np.float32)
             tree = ot.PyOctree(self.refv,self.reft,self.refq)
-            projlist = tree.findprojectionlist(vertlist1.astype(np.float32)) 
-            vertlist1 =projlist.proj.reshape(num_v,3).astype(np.float32)
-            vertlist = vertlist1.flatten()
+            projlist = tree.findprojectionlist(vertlist.astype(np.float32)) 
+            vertlist =projlist.proj.reshape(num_v,3).astype(np.float32)
+            vertlist_flatten = vertlist.flatten()
             if (np.linalg.norm(d)<tol):
                 print('normd:',np.linalg.norm(d))
                 print('it takes '+str(i)+' iterations to finsh qp')
                 break
-
-        fixed = vertlist1[self.fixedvert]            
-        return vertlist1       
+            print('d',d.shape)
+            print('vertlist_flatten',vertlist_flatten.shape)
+            exit()         
+        return vertlist       
 
     # convert to fully quad mesh
     def fullyquad(self):

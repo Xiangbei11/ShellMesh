@@ -903,7 +903,7 @@ class ShellMesh(Mesh):
                 #itr=[1,2,3] #w4 = 0.8 26570 
                 #itr=[1,2,2,2,2,3] #w4 = 1  27240 
                 #itr=[1,2,3]  #w4 = 0.7 26486
-                itr=[3,3,3]
+                itr=[3,3,3,3]#,3,3,3,3,3
                 # if memb.options['id'] ==0:#plot
                 #     mesh = vedo.Mesh([vertexCoords, m.trilist], alpha=0.3)
                 #     mesh.backColor().lineColor('green').lineWidth(3) 
@@ -976,7 +976,7 @@ class ShellMesh(Mesh):
             fig, axs = plt.subplots(2,1, figsize= (14,8))
             axs[0].hist(aspect_ratio, color = 'blue', alpha = 0.8, bins = 50)
             axs[0].title.set_text('Aspect Ratio')
-            axs[1].hist(internal_angles.flatten(), color = 'orange', alpha = 0.8, bins =50)
+            axs[1].hist(internal_angles.flatten(), color = 'orange', alpha = 0.8, bins =20)
             axs[1].title.set_text('Internal Angles')
             fig.tight_layout()
             plt.savefig('data/histogram')            

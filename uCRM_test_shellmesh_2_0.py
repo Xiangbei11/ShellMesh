@@ -23,7 +23,7 @@ OML_pointset_list = shell_mesh.extract_pointset_list_from_bspline_surface(geo, b
 for i, pointset in enumerate(OML_pointset_list):
     print(pointset.pointset_id,pointset.name)
 print()
-scale = 100
+scale = 1000
 vd0 = []
 surface_upper0 = np.empty((0,3))
 surface_lower0 = np.empty((0,3))
@@ -80,7 +80,9 @@ for i in range(111,157):
                 )      
             k+=1
 vd1 = vedo.Points(surface_upper0, r=15, c = 'black', alpha = 0.5)
-
+# vd_plotter = vedo.Plotter()
+# vd_plotter.show(vd0,vd1,'000', axes=1, viewup="z", interactive = True)
+# exit()
 vd2 = []
 surface_upper1 = np.empty((0,3))
 surface_lower1 = np.empty((0,3))
@@ -244,8 +246,8 @@ shell_mesh.members_dict['side1'] = Member(
     )  
 
 
-shell_mesh.optimizie_mesh()
-shell_mesh.construct_whole_structure_optmesh('CAD_uCRM_shellmesh_2')
+# shell_mesh.optimizie_mesh()
+# shell_mesh.construct_whole_structure_optmesh('CAD_uCRM_shellmesh_2')
 
 # mesh0 = vedo.Mesh([total_surface_upper, connectivity], alpha=0.5)
 # mesh0.backColor().lineColor('green').lineWidth(3) 

@@ -251,8 +251,8 @@ for memb in shell_mesh.members_dict.values():
     else:
         vd_points.append(vedo.Points(pts, r=20, c='red',alpha = 0.7))
 print('count',count)
-shell_mesh.optimizie_mesh()
-shell_mesh.construct_whole_structure_optmesh('CAD_uCRM_shellmesh_2')
+# shell_mesh.optimizie_mesh()
+# shell_mesh.construct_whole_structure_optmesh('CAD_uCRM_shellmesh_2')
 vd_plotter1 = vedo.Plotter()
 vd_plotter1.show(vd_points,vd_points1,vd_mesh,'222', axes=1, viewup="z", interactive = True)
 

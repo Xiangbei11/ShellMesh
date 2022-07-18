@@ -9,6 +9,19 @@ cwd = os.getcwd()
 CAD_file_path = cwd + '/lsdo_kit/lsdo_kit/design/design_geometry/examples'
 os.chdir(CAD_file_path)
 
+import matplotlib.pyplot as plt
+aspect_ratio = np.loadtxt('/Users/Sansara/Public/Code/Geomesh/ShellMesh/data_18856/aspect_ratio.txt')#eVTOL_26486
+internal_angles = np.loadtxt('/Users/Sansara/Public/Code/Geomesh/ShellMesh/data_18856/internal_angles.txt')
+print('aspect_ratio', aspect_ratio.shape,'internal_angles', internal_angles.shape)
+fig, axs = plt.subplots(2,1, figsize= (14,8))
+axs[0].hist(aspect_ratio, color = 'blue', alpha = 0.8, bins = 50)
+axs[0].title.set_text('Aspect Ratio')
+axs[1].hist(internal_angles.flatten(), color = 'orange', alpha = 0.8, bins =20)
+axs[1].title.set_text('Internal Angles')
+fig.tight_layout()
+plt.savefig('/Users/Sansara/Public/Code/Geomesh/ShellMesh/data_18856/histogram')   
+plt.show()         
+exit()
 from lsdo_kit.design.design_geometry.examples.test_eVTOL_wing_structure_shellmesh_1 import geo, members_ctrl_pointset_list
 
 os.chdir(cwd)
@@ -72,7 +85,7 @@ shell_mesh.identify_intersection_list(geo, intersection_list_lower_wing)
 shell_mesh.identify_intersection_list(geo,intersection_list_wing)
 shell_mesh.construct_whole_structure_mesh(plot = True)#plot = True
 #shell_mesh.save_tri_vtk('CAD_test_eVTOL_shellmesh_1', shell_mesh.total_points, shell_mesh.tri_connectivity)
-exit()
+
 '''Just test the path of gurobi licence file'''
 import gurobipy as gp
 test = gp.Model('test') # export GRB_LICENSE_FILE=/Users/Sansara/Public/Code/A/gurobi.lic
@@ -80,4 +93,4 @@ test = gp.Model('test') # export GRB_LICENSE_FILE=/Users/Sansara/Public/Code/A/g
 shell_mesh.optimizie_mesh()
 shell_mesh.construct_whole_structure_optmesh('CAD_test_eVTOL_shellmesh_1')
 
-
+exit()

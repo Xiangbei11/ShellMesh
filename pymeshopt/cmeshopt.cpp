@@ -35,8 +35,17 @@ vector<double> opt::calculate_aspect_ratio()
         vector<double> e23 = vectSubtract(quadvertices[3],quadvertices[2]);
         vector<double> e30 = vectSubtract(quadvertices[0],quadvertices[3]);
         double opt10Lavg = (vectNorm(e01)+vectNorm(e12)+vectNorm(e23)+vectNorm(e30))/4;
-        aspect_ratio[i] = (pow(vectNorm(e01)/opt10Lavg,p) + pow(vectNorm(e12)/opt10Lavg,p)
-            + pow(vectNorm(e23)/opt10Lavg,p) + pow(vectNorm(e30)/opt10Lavg,p))/4;
+        double shortest = vectNorm(e01);
+        double longest = vectNorm(e01);
+        if (vectNorm(e12)>longest){longest = vectNorm(e12);}
+        if (vectNorm(e23)>longest){longest = vectNorm(e23);}
+        if (vectNorm(e30)>longest){longest = vectNorm(e30);}
+        if (vectNorm(e12)<shortest){shortest = vectNorm(e12);}
+        if (vectNorm(e23)<shortest){shortest = vectNorm(e23);}
+        if (vectNorm(e30)<shortest){shortest = vectNorm(e30);}        
+        //aspect_ratio[i] = (pow(vectNorm(e01)/opt10Lavg,p) + pow(vectNorm(e12)/opt10Lavg,p)
+        //    + pow(vectNorm(e23)/opt10Lavg,p) + pow(vectNorm(e30)/opt10Lavg,p))/4;
+        aspect_ratio[i] = longest/shortest;
     }
     return aspect_ratio;    
 }
@@ -2209,6 +2218,7 @@ Uni opt::mergeduppts(double tol)
     vector<int> vertindex(vertlist.size(),-1);
     int count =0;
     for (i=0;i<vertlist.size();i++){
+        cout<<i<<" "<<vertlist.size()<<"\n";
         vector<double> verti = vertlist[i];
         if (vertindex[i]<0){
             univert.push_back(verti);
