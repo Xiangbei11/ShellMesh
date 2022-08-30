@@ -36,9 +36,9 @@ for i in range(111,157):
         print('rib', i, pointset.pointset_id,pointset.name)
         pointset.shape= np.array([11, 11, 3])
         if i == 111 or i==112:
-            num_points_u0, num_points_v0  = 3, 2 
+            num_points_u0, num_points_v0  = 3, 3 
         else:        
-            num_points_u0, num_points_v0  = 8, 2       
+            num_points_u0, num_points_v0  = 8, 3       
         u0_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u0), np.ones(num_points_v0)).flatten()
         v0_vec = np.einsum('i,j->ij', np.ones(num_points_u0), np.linspace(0., 1., num_points_v0)).flatten()            
         u0_v0_vec = np.vstack((u0_vec, v0_vec)).T    
@@ -49,14 +49,16 @@ for i in range(111,157):
         if k==12:
             print('k==12',i)
             print(len(test_points),test_points)
-            test_points[2,:] = np.array([32980,10458,4055])
-            test_points[3,:] = np.array([32980,10458,4810])        
+            test_points[3,:] = np.array([32980,10458,4055])
+            test_points[4,:] = np.array([32980,10458,4432.5])
+            test_points[5,:] = np.array([32980,10458,4810])        
         if k==13:
             print()
             print('k==13',i)
             print(len(test_points),test_points)
-            test_points[2,:] = np.array([32981,11303,4144])
-            test_points[3,:] = np.array([32981,11303,4786])        
+            test_points[3,:] = np.array([32981,11303,4144])
+            test_points[4,:] = np.array([32981,11303,4465])
+            test_points[5,:] = np.array([32981,11303,4786])        
         
         color = list(vedo.colors.colors.values())[i]
         vd0.append(vedo.Points(test_points/scale, r=8, c = color)) 
@@ -89,9 +91,9 @@ for i in range(103,108):
     print('rib', i, pointset.pointset_id,pointset.name)
     pointset.shape= np.array([11, 11, 3])
     if i == 107:
-        num_points_u0, num_points_v0  = 3, 2 
+        num_points_u0, num_points_v0  = 3, 3 
     else:
-        num_points_u0, num_points_v0  = 8, 2      
+        num_points_u0, num_points_v0  = 8, 3      
     u0_vec = np.einsum('i,j->ij', np.linspace(0., 1., num_points_u0), np.ones(num_points_v0)).flatten()
     v0_vec = np.einsum('i,j->ij', np.ones(num_points_u0), np.linspace(0., 1., num_points_v0)).flatten()            
     u0_v0_vec = np.vstack((u0_vec, v0_vec)).T    
@@ -134,7 +136,7 @@ total_surface_lower = np.append(surface_lower1, total_surface_lower,axis=0)
 print('total_surface_lower',total_surface_lower.shape)
 vd5 = vedo.Points(total_surface_lower/scale, r=15, c = 'red', alpha = 0.5)
 vd_plotter1 = vedo.Plotter()
-vd_plotter1.show(vd0,vd2,vd4,vd5,'111', axes=1, viewup="z", interactive = False)
+vd_plotter1.show(vd0,vd2,vd4,vd5,'111', axes=1, viewup="z", interactive = False)#
 #exit()
 constrained_edges = np.empty((0,2),dtype = int)
 for i in np.arange(0,7,1):
@@ -162,9 +164,9 @@ constrained_edges = np.append(constrained_edges, \
 # exit()
 constrained_edges = np.append(constrained_edges, \
     np.array([[32,33],[33,34],[34,39],[39,47],[47,55]]), axis = 0)#
-#print(constrained_edges)
 A = dict(vertices=total_surface_upper[:,:2], segments=constrained_edges)#
 B = tr.triangulate(A,'p') 
+# print(constrained_edges)
 # tr.compare(plt, A, B)         
 # plt.show()#block=False
 # exit()
@@ -184,6 +186,7 @@ shell_mesh.members_dict['upper_surface'] = Member(
     constrained_node_indices = [],
     )  
 k+=1
+
 shell_mesh.members_dict['lower_surface'] = Member( 
     id = k,   
     name = 'lower_surface',
@@ -193,7 +196,8 @@ shell_mesh.members_dict['lower_surface'] = Member(
     )  
 k+=1
 
-points = np.append(total_surface_upper[indices,:],total_surface_lower[indices,:], axis = 0)
+points = np.append(total_surface_upper[indices,:],(total_surface_upper[indices,:]+total_surface_lower[indices,:])/2, axis = 0)
+points = np.append(points,total_surface_lower[indices,:], axis = 0)
 ids = [0,2]
 A = dict(vertices=points[:,ids])
 B = tr.triangulate(A,'pc') 
@@ -210,7 +214,8 @@ k+=1
 i+=1
 
 indices =[121,129]
-points = np.append(total_surface_upper[indices,:],total_surface_lower[indices,:], axis = 0)
+points = np.append(total_surface_upper[indices,:],(total_surface_upper[indices,:]+total_surface_lower[indices,:])/2, axis = 0)
+points = np.append(points,total_surface_lower[indices,:], axis = 0)
 ids = [1,2]
 A = dict(vertices=points[:,ids])
 B = tr.triangulate(A,'pc') 
@@ -232,20 +237,25 @@ vd_plotter = vedo.Plotter()
 vd_plotter.show(vd4,vd5,mesh0,'111', axes=1, viewup="z", interactive = False)
 
 indices = [7,15,23,31] + list(np.arange(in_start,in_start+num_points_uu0*num_points_vv0-32,num_points_vv0))
-points = np.append(total_surface_upper[indices,:],total_surface_lower[indices,:], axis = 0)
+points = np.append(total_surface_upper[indices,:],(total_surface_upper[indices,:]+total_surface_lower[indices,:])/2, axis = 0)
+points = np.append(points,total_surface_lower[indices,:], axis = 0)
 vd_points1 = vedo.Points(points/scale, r=30, c='green',alpha = 1.0)
 ids = [1,2]
 constrained_edges = np.empty((0,2),dtype = int)
 for i in range(len(indices)-1):
     constrained_edges = np.append(constrained_edges, np.array([i, i+1]).reshape(1,2), axis = 0)
 constrained_edges = np.append(constrained_edges, np.array([[i+1,2*len(indices)-1]]).reshape(1,2), axis = 0)
-for i in np.arange(2*len(indices)-1,len(indices),-1):
+constrained_edges = np.append(constrained_edges, np.array([[2*len(indices)-1,3*len(indices)-1]]).reshape(1,2), axis = 0)
+for i in np.arange(3*len(indices)-1,2*len(indices),-1):
     constrained_edges = np.append(constrained_edges, np.array([i, i-1]).reshape(1,2), axis = 0)
+constrained_edges = np.append(constrained_edges, np.array([[2*len(indices),len(indices)]]).reshape(1,2), axis = 0)
 constrained_edges = np.append(constrained_edges, np.array([[len(indices),0]]).reshape(1,2), axis = 0)
+print(constrained_edges)
 A = dict(vertices=points[:,ids], segments=constrained_edges)
 B = tr.triangulate(A,'p') 
 tr.compare(plt, A, B)         
-plt.show(block=False)
+plt.show(block=False)#block=False
+#exit()
 connectivity = np.copy(B['triangles'])
 shell_mesh.members_dict['side0'] = Member(  
     id = k,  
@@ -257,15 +267,18 @@ shell_mesh.members_dict['side0'] = Member(
 k+=1
 
 indices = [0,8,16,24,32,35,37] + list(np.arange(40,40+num_points_uu0*num_points_vv0-3*num_points_vv0,num_points_vv0))
-points = np.append(total_surface_upper[indices,:],total_surface_lower[indices,:], axis = 0)
+points = np.append(total_surface_upper[indices,:],(total_surface_upper[indices,:]+total_surface_lower[indices,:])/2, axis = 0)
+points = np.append(points,total_surface_lower[indices,:], axis = 0)
 vd_points1 = vedo.Points(points/scale, r=30, c='green',alpha = 1.0)
 ids = [1,2]
 constrained_edges = np.empty((0,2),dtype = int)
 for i in range(len(indices)-1):
     constrained_edges = np.append(constrained_edges, np.array([i, i+1]).reshape(1,2), axis = 0)
 constrained_edges = np.append(constrained_edges, np.array([[i+1,2*len(indices)-1]]).reshape(1,2), axis = 0)
-for i in np.arange(2*len(indices)-1,len(indices),-1):
+constrained_edges = np.append(constrained_edges, np.array([[2*len(indices)-1,3*len(indices)-1]]).reshape(1,2), axis = 0)
+for i in np.arange(3*len(indices)-1,2*len(indices),-1):
     constrained_edges = np.append(constrained_edges, np.array([i, i-1]).reshape(1,2), axis = 0)
+constrained_edges = np.append(constrained_edges, np.array([[2*len(indices),len(indices)]]).reshape(1,2), axis = 0)
 constrained_edges = np.append(constrained_edges, np.array([[len(indices),0]]).reshape(1,2), axis = 0)
 A = dict(vertices=points[:,ids], segments=constrained_edges)
 B = tr.triangulate(A,'p') 
@@ -336,8 +349,6 @@ for memb in shell_mesh.members_dict.values():
     else:
         vd_points.append(vedo.Points(pts, r=20, c='red',alpha = 0.7))
 print('count',count)
-# shell_mesh.optimizie_mesh()
-# shell_mesh.construct_whole_structure_optmesh('CAD_uCRM_shellmesh_3')
 vd_plotter1 = vedo.Plotter()
-vd_plotter1.show(vd_points,vd_points1,vd_mesh,'222', axes=1, viewup="z", interactive = True)
+vd_plotter1.show(vd_points,vd_points1,vd_mesh,'222', axes=1, viewup="z", interactive = True)#,vd_points1
 exit()

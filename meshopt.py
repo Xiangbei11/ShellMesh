@@ -47,15 +47,118 @@ class meshopt(object):
     
     # arrange the optimzation 
     def optimization(self): 
+        k = 0
+        plot = False
         for i in self.itr:
             if i == 0:
                 self.vertexCoords,self.trilist,self.quadlist = self.splitting()
             elif i == 1:
                 self.trilist,self.quadlist = self.merging()
             elif i == 2:
+                if k > 0:
+                    if len(self.vertexCoords) == 39:
+                        self.fixedvert = np.array([1,16,3,21,5,24,7,28,9,33,11,37,13,0,18,2,22,4,25,6,29,8,34,10,38,12,1,17,0,13,36,12]).astype(np.int32)            
+                        if abs(self.vertexCoords[0,1]-3.1) < 0.001:                      
+                            self.fixedvert = np.array([0, 18, 1, 21, 2, 26, 3, 30, 4, 33, 5, 37, 6, 7, 16, 8, 22, 9, 24, 10, 28, 11, 34, 12, 38, 13, 0,15,7,6,36,13 ]).astype(np.int32) #   12,36,13
+                    elif len(self.vertexCoords) == 45:
+                        self.fixedvert = np.array([1, 18, 3, 23, 5, 27, 7, 32, 9, 35, 11, 39, 13, 43, 15, 0, 20, 2, 24, 4, 28, 6, 30, 8, 36, 10, 40, 12, 44, 14, 1,19,0,15,42,14]).astype(np.int32)
+                    elif len(self.vertexCoords) == 33:
+                        self.fixedvert = np.array([1, 14, 3, 19, 5, 24, 7, 27, 9, 31, 11, 0, 16, 2, 20, 4, 22, 6, 28, 8, 32, 10, 1,15,0,11,30,10]).astype(np.int32)
+                    elif len(self.vertexCoords) == 27:
+                        self.fixedvert = np.array([1, 12, 3, 18, 5, 20, 7, 25, 9, 0, 14, 2, 16, 4, 21, 6, 26, 8, 1,13,0,9,24,8]).astype(np.int32)#
+                    elif len(self.vertexCoords) == 21:
+                        self.fixedvert = np.array([1, 10, 3, 16, 5, 19, 7, 0, 12, 2, 14, 4, 20, 6, 1,11,0,7,18,6]).astype(np.int32)#
+                    elif len(self.vertexCoords) == 15:
+                        self.fixedvert = np.array([1, 9, 3, 12, 5, 0, 7, 2, 13, 4, 1,10,0,5,14,4]).astype(np.int32)#
+                    elif len(self.vertexCoords) == 9:
+                        self.fixedvert = np.array([1, 6, 3, 0, 8, 2, 1, 7, 0, 3, 5, 2]).astype(np.int32)
+                    elif len(self.vertexCoords) == 297: # or len(self.vertexCoords) == 273
+                        print('self.vertexCoords',self.vertexCoords)
+                        print(type(self.fixedvert),self.fixedvert)
+                        fixedvert_update = []
+                        fixedvert = np.array(np.where((self.vertexCoords[:,2] > 4.5 ) & (self.vertexCoords[:,1]<22))).flatten()
+                        print(len(fixedvert),list(fixedvert))
+                        num_points_u0 = int(len(fixedvert)/2)
+                        for i in range(num_points_u0):
+                            fixedvert_update.append(fixedvert[i])
+                            fixedvert_update.append(fixedvert[i+num_points_u0])
+                        print(len(fixedvert_update),list(fixedvert_update))
+
+                        fixedvert = np.array(np.where((self.vertexCoords[:,2] > 4.42) & (self.vertexCoords[:,1]>22) & (self.vertexCoords[:,1]<27))).flatten()
+                        print(len(fixedvert),list(fixedvert))
+                        num_points_u0 = int(len(fixedvert)/2)
+                        for i in range(num_points_u0):
+                            fixedvert_update.append(fixedvert[i])
+                            fixedvert_update.append(fixedvert[i+num_points_u0])
+                        print(len(fixedvert_update),list(fixedvert_update))
+
+                        fixedvert = np.array(np.where((self.vertexCoords[:,2] > 4.263) & (self.vertexCoords[:,1]>26.8))).flatten()
+                        print(len(fixedvert),list(fixedvert))
+                        num_points_u0 = int(len(fixedvert)/2)
+                        for i in range(num_points_u0):
+                            fixedvert_update.append(fixedvert[i])
+                            fixedvert_update.append(fixedvert[i+num_points_u0])
+                        print(len(fixedvert_update),list(fixedvert_update))
+
+                        # fixedvert = np.array(np.where((self.vertexCoords[:,2] <3.7) & (self.vertexCoords[:,1]<3))).flatten()
+                        # print(len(fixedvert),list(fixedvert))
+                        # num_points_u0 = int(len(fixedvert)/2)
+                        # for i in range(num_points_u0):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # print(len(fixedvert_update),list(fixedvert_update))
+
+                        # fixedvert = np.array(np.where((self.vertexCoords[:,2] <4.3) & (self.vertexCoords[:,1]>3) & (self.vertexCoords[:,1]<25))).flatten()
+                        # print(len(fixedvert),list(fixedvert))
+                        # num_points_u0 = int(len(fixedvert)/2)
+                        # for i in range(num_points_u0):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # print(len(fixedvert_update),list(fixedvert_update))
+
+                        # fixedvert = np.array(np.where((self.vertexCoords[:,2] <4.2) & (self.vertexCoords[:,1]>25) & (self.vertexCoords[:,1]<26.8))).flatten()
+                        # print(len(fixedvert),list(fixedvert))
+                        # num_points_u0 = int(len(fixedvert)/2)
+                        # for i in range(num_points_u0):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # print(len(fixedvert_update),list(fixedvert_update))
+
+                        # fixedvert = np.array(np.where((self.vertexCoords[:,2] <4.1) & (self.vertexCoords[:,1]>28))).flatten()
+                        # print(len(fixedvert),list(fixedvert))
+                        # num_points_u0 = int(len(fixedvert)/2)
+                        # for i in range(num_points_u0):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # print(len(fixedvert_update),list(fixedvert_update))
+
+                        # fixedvert = np.array(np.where((self.vertexCoords[:,2] <4.1) & (self.vertexCoords[:,1]>29.3))).flatten()
+                        # print(len(fixedvert),list(fixedvert))
+                        # num_points_u0 = int(len(fixedvert)/2)
+                        # for i in range(num_points_u0):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # print(len(fixedvert_update),list(fixedvert_update))
+
+                        self.fixedvert = np.array(fixedvert_update).astype(np.int32)
+                        # fixedvert_update.append(fixedvert[i+1])
+                        # fixedvert = np.array(np.where(self.vertexCoords[:,2] < 3.9)).flatten()
+                        # print(len(fixedvert),fixedvert)
+                        # for i in range(num_points_u0-1):
+                        #     fixedvert_update.append(fixedvert[i])
+                        #     fixedvert_update.append(fixedvert[i+num_points_u0])
+                        # fixedvert_update.append(fixedvert[i+1])                        
+                        # print(len(fixedvert_update),list(fixedvert_update))
+                        plot = True
+                    else:
+                        print('self.vertexCoords',len(self.vertexCoords))
+                        plot = True
+                        
+                        
                 self.vertexCoords = self.qpmanual()
             elif i == 3:
-                self.fullyquad()
+                k += 1
+                self.fullyquad(plot)
 
     # splitting optimization
     def splitting(self, plot = False):
@@ -82,27 +185,19 @@ class meshopt(object):
 
         opt = gp.Model("split")
         x = opt.addMVar(shape=len(Cs),lb=bound[0,:], ub=bound[1,:], vtype=GRB.BINARY, name="x")
-        print(x[0])
         opt.setObjective(Cs @ x, GRB.MINIMIZE)
         opt.addMConstrs(A,x,'=',B)
-        print('num_polygons',num_polygons, 'self.vertexCoords', self.vertexCoords.shape[0])
-        print('Cs',np.shape(Cs))
-        print('x', np.shape(x))
-        print('A', np.shape(A))
-        print('B', np.shape(B))
-        print('A1', np.shape(A1))
-        print('B1', np.shape(B1))
-        print('A2', np.shape(A2))
+        a = np.eye(len(Cs))
+        print('splitting optimizing start...')
         opt.optimize()
-        print(x.X)
-        #
+        print('splitting optimize finish')
         a=(np.argwhere(x.X > 0.5).flatten()-np.linspace(0,11*(num_polygons-1),num_polygons)).astype(int)
-        print('a', a.shape, a)
-        print('x.X', np.shape(x.X), x.X)
-        print('np.argwhere(x.X > 0.5)', np.shape(np.argwhere(x.X > 0.5)), np.argwhere(x.X > 0.5))
-        print('np.argwhere(x.X > 0.5).flatten()', np.shape(np.argwhere(x.X > 0.5).flatten()),np.linspace(0,11*(num_polygons-1),num_polygons))
-        print('np.linspace(0,11*(num_polygons-1),num_polygons)', np.shape(np.linspace(0,11*(num_polygons-1),num_polygons)))
-        exit()
+        # print('a', a.shape, a)
+        # print('x.X', np.shape(x.X), x.X)
+        # print('np.argwhere(x.X > 0.5)', np.shape(np.argwhere(x.X > 0.5)), np.argwhere(x.X > 0.5))
+        # print('np.argwhere(x.X > 0.5).flatten()', np.shape(np.argwhere(x.X > 0.5).flatten()),np.linspace(0,11*(num_polygons-1),num_polygons))
+        # print('np.linspace(0,11*(num_polygons-1),num_polygons)', np.shape(np.linspace(0,11*(num_polygons-1),num_polygons)))
+        # exit()
         output = meshopt.splitupdatemesh(a.astype(np.int32),self.fixedvert)
         vertexCoords = output.vertlist
         trilist = output.trilist
@@ -112,7 +207,7 @@ class meshopt(object):
         vertexCoords=vertexCoords.astype(np.float32)
         trilist=trilist.astype(np.int32)
         quadlist=quadlist.astype(np.int32)
-        if True:
+        if 0:
             mesh_tri = vedo.Mesh([vertexCoords, trilist], alpha=0.5)
             mesh_tri.backColor().lineColor('blue').lineWidth(6) 
             mesh_quad = vedo.Mesh([vertexCoords, quadlist], alpha=0.9)
@@ -128,27 +223,17 @@ class meshopt(object):
         return vertexCoords, trilist, quadlist
 
     # merging optimization
-    def merging(self):
+    def merging(self): #export GRB_LICENSE_FILE=/Users/Sansara/Public/Code/A/gurobi.lic     
         meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3)
         C = meshopt.create_merging_vector()
-        print('C finished', C.shape)
         A_ub = meshopt.ubcon()
-        print('A_ub finished')
         b_ub = np.ones(len(self.trilist))
-        print('creatint bound...')
-        # print()
-        # print('self.fixedvert',self.fixedvert)
-        # print()
-        bound = meshopt.createboundsmerge(self.fixedvert)
-        print('end bound...')
+        bound = meshopt.create_merging_bounds(self.fixedvert)
         opt = gp.Model("merge")
         x = opt.addMVar(shape=len(C), lb=bound[0,:], ub=bound[1,:], vtype=GRB.BINARY, name="x")
         opt.setObjective(C @ x, GRB.MINIMIZE)
         opt.addMConstrs(A_ub,x,'<',b_ub)
         a = np.eye(len(C))
-        # opt.addMConstrs(a,x,'<',bound[1,:])
-        # opt.addMConstrs(a,x,'>',bound[0,:])
-        print('merging optimizing...')
         opt.optimize()
         res = x.X
         a = res+0.5
@@ -157,8 +242,26 @@ class meshopt(object):
         quadlist = output.quadlist
         trilist=trilist.astype(np.int32)
         quadlist=quadlist.astype(np.int32)
-
+        
         if 0:
+            connectivity = trilist
+            for i in range(len(connectivity)):
+                index = 29
+                if index in list(connectivity[i,:]): 
+                    print(i, index, connectivity[i,:]) 
+                # index = 50
+                # if index in list(connectivity[i,:]): 
+                #     print(i, index, connectivity[i,:])    
+            print()    
+            connectivity = quadlist
+            for i in range(len(connectivity)):
+                index = 29
+                if index in list(connectivity[i,:]): 
+                    print(i, index, connectivity[i,:]) 
+                # index = 50
+                # if index in list(connectivity[i,:]): 
+                #     print(i, index, connectivity[i,:])  
+         
             mesh_tri = vedo.Mesh([self.vertexCoords, trilist], alpha=0.5)
             mesh_tri.backColor().lineColor('blue').lineWidth(6) 
             mesh_quad = vedo.Mesh([self.vertexCoords, quadlist], alpha=0.9)
@@ -166,15 +269,22 @@ class meshopt(object):
             mesh_ini = vedo.Mesh([self.vertexCoords, self.trilist], alpha=0.2)
             mesh_ini.backColor().lineColor('green').lineWidth(3) 
             vd_ini = vedo.Plotter(axes=1)
-            vd_ini.show(mesh_ini,'Ini_mesh', viewup="z", interactive=False) 
+            index = [44,29]
+            print('index',index)
+            points = vedo.Points(self.vertexCoords[index,:], r=25, c='blue',alpha = 0.3)
+            vd_ini.show(mesh_ini,points,'Ini_mesh', viewup="z", interactive=False) 
+            
+            print()
+            print('self.fixedvert',len(self.fixedvert),self.fixedvert)
+            print()
+            print('plot finished', len(self.trilist),len(trilist),len(quadlist),len(self.vertexCoords))
             vd_test = vedo.Plotter(axes=1)
-            print('plot finished', len(trilist),len(quadlist))
-            vd_test.show(mesh_tri, mesh_quad,'optimizie_mesh', viewup="z",interactive=True)    
+            vd_test.show(mesh_tri, mesh_quad,'optimizie_mesh', viewup="z",interactive=True)  
             exit()  
         return trilist, quadlist
 
     # apply the KKT conditions and get the following work (faster and is used)
-    def qpmanual(self,num_itr=50, tol=1e-4, w=20, limit=0.7):
+    def qpmanual(self,num_itr=50, tol=1e-4, w=20, limit=0.7):#
         '''
         num_itr : number of times of doing the smoothing and projection methods
         tol : if the norm of the displacement vector is smaller than tol, for loop stops
@@ -189,32 +299,32 @@ class meshopt(object):
         meshopt = pymeshopt.Pymeshopt(vertlist,self.trilist,self.quadlist,self.w1,self.w2,self.w3)
         optprep = meshopt.computenormal()
         n = optprep.normal.flatten()
-        print('n',n.shape)
+        #print('n',n.shape)
         weight = optprep.weight
         weight[weight>=limit] = 1/weight[weight>=limit]
-        print('weight',weight.shape,weight)
+        #print('weight',weight.shape,weight)
         extraweight = np.zeros(weight.shape[0])
         extraweight[dupvert] = 1e8
         weight = weight+extraweight
         weight[weight<limit] = 1e20
         weight = np.outer(weight,np.ones(3)).flatten()
-        print('weight',weight.shape,weight)
+        #print('weight',weight.shape,weight)
         for i in range(num_itr):    
             num_v = len(self.vertexCoords)
             edges = meshopt.uniedges().astype(np.int32)
             num_e = len(edges)
-            print('edges',edges)
-            print('num_v',num_v,'num_e',num_e)
+            # print('edges',edges)
+            # print('num_v',num_v,'num_e',num_e)
             row = np.outer(np.arange(num_e*3),np.ones(2)).flatten()
             col = np.linspace(edges*3,edges*3+2,num=3,axis=1).flatten()
-            print('col',np.linspace(edges*3,edges*3+2,num=3,axis=1))
+            #print('col',np.linspace(edges*3,edges*3+2,num=3,axis=1))
             data = np.repeat(np.array([[1,-1]]),num_e*3,axis=0).flatten()
             dPdd = csc_matrix((data,(row,col)),shape=(num_e*3,num_v*3))
-            print('dPdd',np.shape(dPdd.toarray()),dPdd.toarray())
+            #print('dPdd',np.shape(dPdd.toarray()),dPdd.toarray())
             v0 = vertlist[edges[:,0]].flatten()
             v1 = vertlist[edges[:,1]].flatten()
             v = csc_matrix(v0-v1)
-            print('v', np.shape(v.toarray()))
+            #print('v', np.shape(v.toarray()))
             b = dPdd.T.dot(v.T)
             b = vstack((b,csc_matrix((num_v,1))))
             b = b.toarray().reshape(num_v*4)*(-0.5)
@@ -238,7 +348,8 @@ class meshopt(object):
             d = scipy.sparse.linalg.splu(M)
             d = d.solve(b)
             d = d[:num_v*3]
-            print('interation '+str(i),'normd:',np.linalg.norm(d))
+            if i%24==0:
+                print('interation '+str(i),'normd:',np.linalg.norm(d))
             vertlist_flatten = vertlist_flatten + d
             vertlist = vertlist_flatten.reshape(num_v,3).astype(np.float32)
             tree = ot.PyOctree(self.refv,self.reft,self.refq)
@@ -249,13 +360,13 @@ class meshopt(object):
                 print('normd:',np.linalg.norm(d))
                 print('it takes '+str(i)+' iterations to finsh qp')
                 break
-            print('d',d.shape)
-            print('vertlist_flatten',vertlist_flatten.shape)
-            exit()         
+            # print('d',d.shape)
+            # print('vertlist_flatten',vertlist_flatten.shape)
+            # exit()         
         return vertlist       
 
     # convert to fully quad mesh
-    def fullyquad(self):
+    def fullyquad(self,plot):
         print('splitting quads and tris:')
         meshopt = pymeshopt.Pymeshopt(self.vertexCoords,self.trilist,self.quadlist,self.w1,self.w2,self.w3)     
         fullyquadmesh = meshopt.fullyquadmesh(self.fixedvert)
@@ -272,19 +383,20 @@ class meshopt(object):
 
 
         
-        if 0:
+        if plot:
             # mesh_tri = vedo.Mesh([vertexCoords, trilist], alpha=0.5)
             # mesh_tri.backColor().lineColor('blue').lineWidth(6) 
             mesh_quad = vedo.Mesh([vertexCoords, quadlist], alpha=0.9)
             mesh_quad.backColor().lineColor('red').lineWidth(6) 
             # mesh_ini = vedo.Mesh([self.vertexCoords, self.trilist], alpha=0.2)
             # mesh_ini.backColor().lineColor('green').lineWidth(3) 
+            points = vedo.Points(vertexCoords[self.fixedvert,:],r = 20,c ='green')
             # vd_ini = vedo.Plotter(axes=1)
             # vd_ini.show(mesh_ini,'Ini_mesh', viewup="z", interactive=False) 
             vd_test = vedo.Plotter(axes=1)
             print('plot finished', len(trilist),len(quadlist))
-            vd_test.show(mesh_quad,'optimizie_mesh', viewup="z",interactive=True)    
-            exit()
+            vd_test.show(mesh_quad,points,'optimizie_mesh',interactive=True)    
+            #exit()
 
     # save as stl (not used since stl only contains triangles)
     def saveasstl(self,stl_file_name):
@@ -317,16 +429,16 @@ class meshopt(object):
             cells
             )
         
-        triindex1 = np.array([0,1,2],dtype=np.int32)
-        triindex2 = np.array([2,3,0],dtype=np.int32)
-        cells = []
-        for i in range(len(self.quadlist)):
-            tuple1 = ("triangle",self.quadlist[i,triindex1].reshape(1,3))
-            tuple2 = ("triangle",self.quadlist[i,triindex2].reshape(1,3))
-            cells.append(tuple1)
-            cells.append(tuple2)
-        meshio.write_points_cells(
-            vtk_file_name+"_tri.vtk",
-            points,
-            cells
-            )
+        # triindex1 = np.array([0,1,2],dtype=np.int32)
+        # triindex2 = np.array([2,3,0],dtype=np.int32)
+        # cells = []
+        # for i in range(len(self.quadlist)):
+        #     tuple1 = ("triangle",self.quadlist[i,triindex1].reshape(1,3))
+        #     tuple2 = ("triangle",self.quadlist[i,triindex2].reshape(1,3))
+        #     cells.append(tuple1)
+        #     cells.append(tuple2)
+        # meshio.write_points_cells(
+        #     vtk_file_name+"_tri.vtk",
+        #     points,
+        #     cells
+        #     )

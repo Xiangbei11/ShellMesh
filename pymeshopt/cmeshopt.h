@@ -157,6 +157,7 @@ public:
     vector<vector<int> > counttriedges(vector<vector<int> > trilist);
     vector<int> removeduplicatetris();
     Uni mergeduppts(double tol);
+    vector<int> mergedupinds(double tol);
 };
 vector<double> vectSubtract( vector<double> &a, vector<double> &b );
 vector<double> midPoint( vector<double> &a, vector<double> &b );

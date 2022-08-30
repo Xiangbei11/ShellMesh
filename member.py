@@ -27,6 +27,8 @@ class Member(object):
         self.options.declare('coordinates', types=np.ndarray)
         self.options.declare('opt_coordinates', types=np.ndarray)
         self.options.declare('opt_connectivity', types=np.ndarray)
+        self.options.declare('opt_mapping', types=sps.csc.csc_matrix)
+        self.options.declare('ctrl_pointset_list', types=list, default=[])
         self.options.update(kwargs)        
         # 
         # self.declare('curves',types=np.ndarray,default=np.array([0,0,0,0]))

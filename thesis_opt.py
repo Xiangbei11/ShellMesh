@@ -17,7 +17,7 @@ quadlist = np.empty((0,4),dtype=np.int32)
 vertexCoords = points_temp0.astype('float32')
 trilist = np.copy(connectivity0).astype('int32')
 fixedvert = np.array([0,1,2], dtype='int32')
-print('trilist',trilist.shape)
+print('trilist',len(trilist.shape))
 print('vertexCoords',vertexCoords.shape)
 itr = [2]
 m = meshopt(vertexCoords,trilist,quadlist, fixedvert=fixedvert ,itr=itr, w1=1.,w2=1.,w3=1., plot = 0)#,w4 =1.

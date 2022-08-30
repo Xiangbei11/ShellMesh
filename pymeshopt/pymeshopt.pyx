@@ -76,6 +76,7 @@ cdef extern from "cmeshopt.h":
         TriInt member_intersection(vector[vector[int]] itris, vector[vector[int]] jtris, vector[vector[double]] icoords, vector[vector[double]] jcoords, vector[int] ifixed, vector[int] jfixed)
         vector[int] removeduplicatetris()
         Uni mergeduppts(double tol)
+        vector[int] mergedupinds(double tol)
 
 # generally speaking, the only thing that is done in pyx file is transformation of data types bewtween python and cpp variables, in our code, no calculation is done in here
 cdef class Pymeshopt:
@@ -173,7 +174,7 @@ cdef class Pymeshopt:
             pyvec[i] = cvec[i]
         return pyvec
     
-    def createboundsmerge(self, np.ndarray[int,ndim=1] _fixedvert):
+    def create_merging_bounds(self, np.ndarray[int,ndim=1] _fixedvert):
         cdef int i,j
         cdef vector[int] fixedvert
         fixedvert.resize(_fixedvert.shape[0])
@@ -390,7 +391,13 @@ cdef class Pymeshopt:
         pyuni.SetValues(uni.vertlist,uni.quadlist)
         return pyuni
 
-
+    def pymergedupinds(self):
+        cdef double tol = 1e-5
+        cdef vector[int] indexlist = self.thisopt.mergedupinds(tol)
+        pyindexlist = np.zeros(indexlist.size(),dtype=np.int32)
+        for i in range(indexlist.size()):
+            pyindexlist[i] = indexlist[i]
+        return pyindexlist
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 cdef class EqualityCon:

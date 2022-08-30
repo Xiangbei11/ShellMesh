@@ -44,12 +44,12 @@ down_direction = np.array([0., 0., -1.])
 up_direction = np.array([0., 0., 1.])
 
 # Project the points onto the surface
-x_leading_root = 186
+x_leading_root = 190
 x_leading_tip = 155
 y_leading_root = 20
 y_leading_tip = 210
 
-x_trailing_root = 218
+x_trailing_root = 220
 x_trailing_tip = 175
 y_trailing_root = y_leading_root
 y_trailing_tip = y_leading_tip

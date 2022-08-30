@@ -2218,7 +2218,9 @@ Uni opt::mergeduppts(double tol)
     vector<int> vertindex(vertlist.size(),-1);
     int count =0;
     for (i=0;i<vertlist.size();i++){
-        cout<<i<<" "<<vertlist.size()<<"\n";
+        if (i%5000==0){
+            cout<<i<<" "<<vertlist.size()<<"\n";
+        }         
         vector<double> verti = vertlist[i];
         if (vertindex[i]<0){
             univert.push_back(verti);
@@ -2240,6 +2242,43 @@ Uni opt::mergeduppts(double tol)
     }
     Uni uni(univert, quadlist);
     return uni;
+}
+
+vector<int> opt::mergedupinds(double tol)
+{
+    unsigned int i, j;
+    vector<vector<int> > quadlist = quadConnectivity;
+    vector<vector<double> > vertlist = vertexCoords; 
+    vector<vector<double> > univert;
+    vector<int> vertindex(vertlist.size(),-1);
+    vector<int> uniindex;
+    int count =0;
+    for (i=0;i<vertlist.size();i++){
+        if (i%5000==0){
+            cout<<i<<" "<<vertlist.size()<<"\n";
+        }         
+        vector<double> verti = vertlist[i];
+        if (vertindex[i]<0){
+            univert.push_back(verti);
+            uniindex.push_back(i);
+            vertindex[i] = count;
+            for (j=i+1;j<vertlist.size();j++){
+                vector<double> vertj = vertlist[j];
+                if (distBetweenPoints(verti,vertj)<tol){
+                    vertindex[j] = count;
+                }
+            }
+            count++;
+        }
+        
+    }
+    for (i=0;i<quadlist.size();i++){
+        for (j=0;j<4;j++){
+            quadlist[i][j] = vertindex[quadlist[i][j]];
+        }
+    }
+    Uni uni(univert, quadlist);
+    return uniindex;
 }
 // ------------------------------------------------------------------------------------------------
 // useful functions
